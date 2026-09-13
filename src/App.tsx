@@ -320,15 +320,6 @@ export default function App() {
 
   const prompt = session.settings.promptMode === 'trigger' ? currentKana.trigger : currentKana.sound
   const progressText = `${session.index + 1} / ${session.items.length}`
-  const contextLabel = currentItem.source === 'due'
-    ? '오늘 복습'
-    : currentItem.source === 'first-check'
-      ? '첫 확인'
-      : currentItem.source === 'retry'
-        ? '다시 인출'
-        : session.mode === 'free-practice'
-          ? '자유 연습'
-          : '연상 학습'
 
   return (
     <main className="app-shell">
@@ -338,10 +329,7 @@ export default function App() {
             <button className="brand-button" type="button" onClick={() => setView('home')}>도전! 일본어</button>
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
-          <div className="progress-group">
-            <span className="session-context">{contextLabel}</span>
-            <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
-          </div>
+          <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
         </header>
 
         <div className="settings" aria-label="문제 설정">

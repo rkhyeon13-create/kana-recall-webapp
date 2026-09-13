@@ -86,21 +86,6 @@ button:focus-visible, select:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.progress-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.session-context {
-  padding: 3px 8px;
-  color: #1558b0;
-  background: #e7f1ff;
-  border-radius: 999px;
-  font-size: .72rem;
-  font-weight: 750;
-}
-
 .settings {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -352,7 +337,6 @@ select {
   .choice-area { min-height: 216px; }
   .choice { min-height: 96px; }
   .feedback { padding: 16px; }
-  .progress-group { align-items: flex-end; flex-direction: column; gap: 2px; }
   .home-card { padding: 24px 18px; }
   .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
 }
