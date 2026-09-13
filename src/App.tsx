@@ -104,8 +104,8 @@ export default function App() {
     [cards, session.settings.range],
   )
   const homeStats = useMemo(
-    () => getHomeStats(cards, progress, session.settings.range),
-    [cards, progress, session.settings.range],
+    () => getHomeStats(cards, progress, 'mixed'),
+    [cards, progress],
   )
 
   useEffect(() => saveSession(session), [session])
@@ -193,13 +193,12 @@ export default function App() {
 
   const startFromHome = () => {
     if (session.completed) {
-      setSession(createScheduledSession({ ...session.settings, promptMode: 'sound' }, cards, initial.firstCheckOrder))
+      setSession(createScheduledSession({ ...session.settings, range: 'mixed', promptMode: 'sound' }, cards, initial.firstCheckOrder))
     }
     setView('quiz')
   }
 
   if (view === 'home') {
-    const rangeLabel = RANGE_OPTIONS.find((option) => option.value === session.settings.range)?.label ?? '선택 범위'
     const hasStartedSession = session.index > 0 || session.answer !== null
     return (
       <main className="app-shell">
@@ -207,7 +206,7 @@ export default function App() {
           <header className="home-header">
             <p className="eyebrow">도전! 일본어</p>
             <h1 id="home-title">오늘의 가나 학습</h1>
-            <p>{rangeLabel} 기준으로 학습 상태를 보여드려요.</p>
+            <p>히라가나와 가타카나 총 92자 기준으로 학습 상태를 보여드려요.</p>
           </header>
           <div className="home-stats" aria-label="학습 통계">
             <div><strong>{homeStats.due}</strong><span>오늘 복습</span></div>
