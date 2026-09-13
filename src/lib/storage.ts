@@ -70,7 +70,12 @@ function isValidSession(value: unknown): value is Session {
     !Array.isArray(session.reviewCharacters) ||
     !session.reviewCharacters.every((character) => typeof character === 'string' && KANA_BY_CHARACTER.has(character)) ||
     typeof session.completed !== 'boolean' ||
-    !(session.completedAt === null || (typeof session.completedAt === 'number' && Number.isFinite(session.completedAt)))
+    !(session.completedAt === null || (typeof session.completedAt === 'number' && Number.isFinite(session.completedAt))) ||
+    !(
+      session.freePracticePromotedAt === undefined ||
+      session.freePracticePromotedAt === null ||
+      (typeof session.freePracticePromotedAt === 'number' && Number.isFinite(session.freePracticePromotedAt))
+    )
   ) return false
 
   if (session.completed && items.length === 0) return session.index === 0 && session.options.length === 0
@@ -78,6 +83,13 @@ function isValidSession(value: unknown): value is Session {
   if (session.options.length !== 4 || new Set(session.options).size !== 4) return false
   if (!session.options.includes(currentItem!.character)) return false
   return session.options.every((character) => KANA_BY_CHARACTER.get(character)?.kind === currentKana.kind)
+}
+
+function normalizeSession(session: Session): Session {
+  return {
+    ...session,
+    freePracticePromotedAt: session.freePracticePromotedAt ?? null,
+  }
 }
 
 function isLegacySession(value: unknown): value is LegacySessionV1 {
@@ -132,6 +144,7 @@ export function migrateSessionV1(session: LegacySessionV1): Session {
     reviewCharacters: session.reviewCharacters,
     completed: session.completed,
     completedAt: session.completed ? Date.now() : null,
+    freePracticePromotedAt: null,
   }
 }
 
@@ -140,7 +153,7 @@ export function loadSession(): Session | null {
     const current = localStorage.getItem(SESSION_V2_KEY)
     if (current) {
       const parsed: unknown = JSON.parse(current)
-      if (isValidSession(parsed)) return parsed
+      if (isValidSession(parsed)) return normalizeSession(parsed)
     }
 
     const legacy = localStorage.getItem(SESSION_V1_KEY)
@@ -228,19 +241,44 @@ export function loadOrCreateFirstCheckOrder(random: () => number = Math.random):
   return order
 }
 
-export function updateProgress(character: string, correct: boolean): void {
+function isProgressMap(value: unknown): value is ProgressMap {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(([character, item]) => {
+    if (!KANA_BY_CHARACTER.has(character) || !item || typeof item !== 'object') return false
+    const progress = item as Partial<ProgressMap[string]>
+    return (
+      typeof progress.shown === 'number' && Number.isFinite(progress.shown) && progress.shown >= 0 &&
+      typeof progress.correct === 'number' && Number.isFinite(progress.correct) && progress.correct >= 0 &&
+      typeof progress.wrong === 'number' && Number.isFinite(progress.wrong) && progress.wrong >= 0 &&
+      typeof progress.lastStudiedAt === 'string'
+    )
+  })
+}
+
+export function loadProgress(): ProgressMap {
   try {
     const stored = localStorage.getItem(PROGRESS_KEY)
-    const progress: ProgressMap = stored ? (JSON.parse(stored) as ProgressMap) : {}
-    const previous = progress[character] ?? { shown: 0, correct: 0, wrong: 0, lastStudiedAt: '' }
-    progress[character] = {
-      shown: previous.shown + 1,
-      correct: previous.correct + (correct ? 1 : 0),
-      wrong: previous.wrong + (correct ? 0 : 1),
-      lastStudiedAt: new Date().toISOString(),
-    }
+    if (!stored) return {}
+    const parsed: unknown = JSON.parse(stored)
+    return isProgressMap(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+export function updateProgress(character: string, correct: boolean): ProgressMap {
+  const progress = loadProgress()
+  const previous = progress[character] ?? { shown: 0, correct: 0, wrong: 0, lastStudiedAt: '' }
+  progress[character] = {
+    shown: previous.shown + 1,
+    correct: previous.correct + (correct ? 1 : 0),
+    wrong: previous.wrong + (correct ? 0 : 1),
+    lastStudiedAt: new Date().toISOString(),
+  }
+  try {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress))
   } catch {
     // Learning must not be blocked by malformed or unavailable storage.
   }
+  return progress
 }

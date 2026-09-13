@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
-import { createFsrsRecord, getFsrsCardKey, localDateKey } from './lib/fsrs'
+import { createFsrsRecord, getFsrsCardKey, localDateKey, promoteCharactersToFsrs } from './lib/fsrs'
 import {
   advanceSession,
   answerSession,
@@ -8,20 +8,23 @@ import {
   createScheduledSession,
   createTriggerPracticeSession,
   canOfferFreePractice,
+  canPromoteFreePracticeErrors,
   DEFAULT_SETTINGS,
   getCompletionStatus,
+  getHomeStats,
   shouldRecordFsrs,
   shouldRecordLongTermProgress,
 } from './lib/quiz'
 import {
   loadFsrsCards,
   loadOrCreateFirstCheckOrder,
+  loadProgress,
   loadSession,
   saveFsrsCards,
   saveSession,
   updateProgress,
 } from './lib/storage'
-import type { FirstCheckOrder, FsrsCardMap, KanaRange, PromptMode, Session, Settings } from './types'
+import type { FirstCheckOrder, FsrsCardMap, KanaRange, ProgressMap, PromptMode, Session, Settings } from './types'
 
 const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
   { value: 'hiragana', label: '히라가나 46자' },
@@ -37,6 +40,7 @@ const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
 interface InitialState {
   cards: FsrsCardMap
   firstCheckOrder: FirstCheckOrder
+  progress: ProgressMap
   session: Session
 }
 
@@ -54,18 +58,20 @@ function newSession(
 function initialize(): InitialState {
   const cards = loadFsrsCards()
   const firstCheckOrder = loadOrCreateFirstCheckOrder()
+  const progress = loadProgress()
   const stored = loadSession()
-  if (!stored) return { cards, firstCheckOrder, session: newSession(DEFAULT_SETTINGS, cards, firstCheckOrder) }
+  if (!stored) return { cards, firstCheckOrder, progress, session: newSession(DEFAULT_SETTINGS, cards, firstCheckOrder) }
 
   const isNewLocalDay = stored.completedAt !== null && localDateKey(stored.completedAt) !== localDateKey(Date.now())
   if (stored.completed && isNewLocalDay) {
     return {
       cards,
       firstCheckOrder,
+      progress,
       session: createScheduledSession({ ...stored.settings, promptMode: 'sound' }, cards, firstCheckOrder),
     }
   }
-  return { cards, firstCheckOrder, session: stored }
+  return { cards, firstCheckOrder, progress, session: stored }
 }
 
 function formatNextReview(timestamp: number | null, count: number, now = Date.now()): string {
@@ -86,7 +92,9 @@ function formatNextReview(timestamp: number | null, count: number, now = Date.no
 export default function App() {
   const [initial] = useState<InitialState>(initialize)
   const [cards, setCards] = useState<FsrsCardMap>(initial.cards)
+  const [progress, setProgress] = useState<ProgressMap>(initial.progress)
   const [session, setSession] = useState<Session>(initial.session)
+  const [view, setView] = useState<'home' | 'quiz'>('home')
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
   const currentItem = session.items[session.index]
@@ -94,6 +102,10 @@ export default function App() {
   const completion = useMemo(
     () => getCompletionStatus(cards, session.settings.range),
     [cards, session.settings.range],
+  )
+  const homeStats = useMemo(
+    () => getHomeStats(cards, progress, session.settings.range),
+    [cards, progress, session.settings.range],
   )
 
   useEffect(() => saveSession(session), [session])
@@ -127,7 +139,9 @@ export default function App() {
       }
     }
 
-    if (shouldRecordLongTermProgress(session, currentItem)) updateProgress(currentKana.character, correct)
+    if (shouldRecordLongTermProgress(session, currentItem)) {
+      setProgress(updateProgress(currentKana.character, correct))
+    }
     const answeredSession = answerSession(session, character, recorded)
     saveSession(answeredSession)
     setSession(answeredSession)
@@ -137,7 +151,7 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (session.completed) return
+      if (view !== 'quiz' || session.completed) return
       if (session.answer && event.key === 'Enter') {
         event.preventDefault()
         next()
@@ -163,6 +177,53 @@ export default function App() {
 
   const startFreePractice = () => {
     setSession(createFreePracticeSession(session.settings))
+    setView('quiz')
+  }
+
+  const promoteFreePracticeErrors = () => {
+    if (!canPromoteFreePracticeErrors(session)) return
+    const promotedAt = Date.now()
+    const nextCards = promoteCharactersToFsrs(cards, session.reviewCharacters, new Date(promotedAt))
+    const nextSession = { ...session, freePracticePromotedAt: promotedAt }
+    setCards(nextCards)
+    saveFsrsCards(nextCards)
+    setSession(nextSession)
+    saveSession(nextSession)
+  }
+
+  const startFromHome = () => {
+    if (session.completed) {
+      setSession(createScheduledSession({ ...session.settings, promptMode: 'sound' }, cards, initial.firstCheckOrder))
+    }
+    setView('quiz')
+  }
+
+  if (view === 'home') {
+    const rangeLabel = RANGE_OPTIONS.find((option) => option.value === session.settings.range)?.label ?? '선택 범위'
+    const hasStartedSession = session.index > 0 || session.answer !== null
+    return (
+      <main className="app-shell">
+        <section className="card home-card" aria-labelledby="home-title">
+          <header className="home-header">
+            <p className="eyebrow">도전! 일본어</p>
+            <h1 id="home-title">오늘의 가나 학습</h1>
+            <p>{rangeLabel} 기준으로 학습 상태를 보여드려요.</p>
+          </header>
+          <div className="home-stats" aria-label="학습 통계">
+            <div><strong>{homeStats.due}</strong><span>오늘 복습</span></div>
+            <div><strong>{homeStats.firstCheckRemaining}</strong><span>첫 확인 남음</span></div>
+            <div><strong>{homeStats.checked}</strong><span>확인한 글자</span></div>
+            <div><strong>{homeStats.accuracy === null ? '—' : `${homeStats.accuracy}%`}</strong><span>누적 정답률</span></div>
+          </div>
+          <button className="primary-action" type="button" onClick={startFromHome}>
+            {session.completed
+              ? (homeStats.due > 0 ? '오늘 복습 시작' : '학습 시작')
+              : hasStartedSession ? '이어서 학습' : '학습 시작'}
+          </button>
+          <p className="local-note">학습 기록은 이 기기의 브라우저에만 저장됩니다.</p>
+        </section>
+      </main>
+    )
   }
 
   if (session.completed) {
@@ -182,6 +243,7 @@ export default function App() {
     return (
       <main className="app-shell">
         <section className="card summary-card" aria-labelledby="summary-title">
+          <button className="brand-button" type="button" onClick={() => setView('home')}>도전! 일본어</button>
           <p className="eyebrow">학습 완료</p>
           <h1 id="summary-title">{title}</h1>
           {hasDueRemaining && <p className="schedule-note">오늘 복습 {completion.dueRemaining}자 남음</p>}
@@ -196,6 +258,22 @@ export default function App() {
             <span>다시 복습한 글자</span>
             <strong lang="ja">{session.reviewCharacters.length ? session.reviewCharacters.join(' · ') : '없음'}</strong>
           </div>
+
+          {session.mode === 'free-practice' && session.reviewCharacters.length > 0 && (
+            <div className="promotion-option">
+              <p>다시 복습한 글자를 장기 복습 주기에 넣을 수 있어요.</p>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={promoteFreePracticeErrors}
+                disabled={!canPromoteFreePracticeErrors(session)}
+              >
+                {session.freePracticePromotedAt === null
+                  ? `${session.reviewCharacters.length}자를 복습 주기에 추가`
+                  : '복습 주기에 추가했어요'}
+              </button>
+            </div>
+          )}
 
           {hasDueRemaining ? (
             <button className="primary-action" type="button" onClick={() => restart({ ...session.settings, promptMode: 'sound' })}>
@@ -242,7 +320,7 @@ export default function App() {
       <section className="card quiz-card" aria-labelledby="app-title">
         <header className="topbar">
           <div>
-            <p className="eyebrow">도전! 일본어</p>
+            <button className="brand-button" type="button" onClick={() => setView('home')}>도전! 일본어</button>
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
           <div className="progress-group">

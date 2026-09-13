@@ -47,6 +47,7 @@ export interface Session {
   reviewCharacters: string[]
   completed: boolean
   completedAt: number | null
+  freePracticePromotedAt: number | null
 }
 
 export interface LegacySessionV1 {
@@ -106,4 +107,12 @@ export interface CompletionStatus {
   canFreePractice: boolean
   nextDueAt: number | null
   nextDueCount: number
+}
+
+export interface HomeStats {
+  due: number
+  firstCheckRemaining: number
+  checked: number
+  attempts: number
+  accuracy: number | null
 }

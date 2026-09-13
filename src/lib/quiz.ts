@@ -4,6 +4,7 @@ import type {
   CompletionStatus,
   FirstCheckOrder,
   FsrsCardMap,
+  HomeStats,
   Kana,
   KanaRange,
   ScheduledSessionItem,
@@ -11,6 +12,7 @@ import type {
   SessionItemSource,
   SessionMode,
   Settings,
+  ProgressMap,
 } from '../types'
 
 export const OPTIONS_DELAY_MS = 2_000
@@ -116,6 +118,7 @@ function buildSession(
     reviewCharacters: [],
     completed: items.length === 0,
     completedAt: items.length === 0 ? now : null,
+    freePracticePromotedAt: null,
   }
 }
 
@@ -262,4 +265,35 @@ export function shouldRecordLongTermProgress(
 
 export function canOfferFreePractice(session: Session, completion: CompletionStatus): boolean {
   return session.completed && session.mode === 'scheduled' && completion.canFreePractice
+}
+
+export function canPromoteFreePracticeErrors(session: Session): boolean {
+  return (
+    session.completed &&
+    session.mode === 'free-practice' &&
+    session.reviewCharacters.length > 0 &&
+    session.freePracticePromotedAt === null
+  )
+}
+
+export function getHomeStats(
+  cards: FsrsCardMap,
+  progress: ProgressMap,
+  range: KanaRange,
+  now: number = Date.now(),
+): HomeStats {
+  const eligibleCharacters = getKanaForRange(range).map((kana) => kana.character)
+  const eligible = new Set(eligibleCharacters)
+  const records = Object.values(cards).filter((record) => eligible.has(record.character) && record.promptMode === 'sound')
+  const progressRecords = Object.entries(progress).filter(([character]) => eligible.has(character)).map(([, value]) => value)
+  const attempts = progressRecords.reduce((total, item) => total + item.shown, 0)
+  const correct = progressRecords.reduce((total, item) => total + item.correct, 0)
+
+  return {
+    due: records.filter((record) => record.card.due <= now).length,
+    firstCheckRemaining: eligibleCharacters.length - records.length,
+    checked: records.length,
+    attempts,
+    accuracy: attempts > 0 ? Math.round((correct / attempts) * 100) : null,
+  }
 }

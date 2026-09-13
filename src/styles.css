@@ -66,6 +66,20 @@ button:focus-visible, select:focus-visible {
   text-transform: uppercase;
 }
 
+.brand-button {
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.brand-button:hover { color: #1558b0; }
+
 .progress {
   color: var(--muted);
   font-size: .9rem;
@@ -284,6 +298,21 @@ select {
 }
 
 .secondary-action:hover { background: #e7f1ff; }
+.secondary-action:disabled { color: var(--muted); background: #f3f5f8; border-color: var(--line); cursor: default; }
+
+.home-card { padding: clamp(28px, 6vw, 52px); }
+.home-header h1 { margin: 10px 0 4px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
+.home-header > p:last-child { margin: 0; color: var(--muted); }
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 30px;
+}
+.home-stats div { padding: 20px 12px; background: #f8f9fb; border-radius: var(--radius); text-align: center; }
+.home-stats strong { display: block; color: #202632; font-size: clamp(1.65rem, 4vw, 2.15rem); }
+.home-stats span { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem; }
+.local-note { margin: 14px 0 0; color: var(--muted); font-size: .78rem; text-align: center; }
 
 .summary-card { padding: clamp(30px, 7vw, 58px); text-align: center; }
 .summary-card h1 { margin: 12px 0 10px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
@@ -295,6 +324,9 @@ select {
 .review-summary { margin-top: 12px; }
 .review-summary > span, .review-summary strong { display: block; }
 .review-summary strong { margin-top: 10px; font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 1.8rem; }
+.promotion-option { margin-top: 12px; padding: 18px; background: #f8f9fb; border-radius: var(--radius); }
+.promotion-option p { margin: 0; color: var(--muted); font-size: .9rem; }
+.promotion-option .secondary-action { margin-top: 12px; }
 
 .sr-only {
   position: absolute;
@@ -318,6 +350,8 @@ select {
   .choice { min-height: 96px; }
   .feedback { padding: 16px; }
   .progress-group { align-items: flex-end; flex-direction: column; gap: 2px; }
+  .home-card { padding: 24px 18px; }
+  .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
 }
 
 @media (max-height: 720px) and (min-width: 700px) {

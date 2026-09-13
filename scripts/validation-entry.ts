@@ -8,6 +8,7 @@ import {
   FSRS_PACKAGE_VERSION,
   getFsrsCardKey,
   localDateKey,
+  promoteCharactersToFsrs,
   ratingForAnswer,
   serializeCard,
 } from '../src/lib/fsrs'
@@ -15,12 +16,14 @@ import {
   advanceSession,
   answerSession,
   canOfferFreePractice,
+  canPromoteFreePracticeErrors,
   createFreePracticeSession,
   createOptions,
   createScheduledSession,
   createTriggerPracticeSession,
   DEFAULT_SETTINGS,
   getCompletionStatus,
+  getHomeStats,
   MAX_SESSION_SIZE,
   OPTIONS_DELAY_MS,
   shouldRecordFsrs,
@@ -31,6 +34,7 @@ import {
   FSRS_KEY,
   loadFsrsCards,
   loadOrCreateFirstCheckOrder,
+  loadProgress,
   loadSession,
   migrateSessionV1,
   PROGRESS_KEY,
@@ -193,6 +197,18 @@ assert.equal(freeSession.mode, 'free-practice')
 assert.equal(new Set(freeSession.items.map((item) => item.character)).size, 10)
 assert.equal(shouldRecordFsrs(freeSession), false)
 assert.equal(shouldRecordLongTermProgress(freeSession), false)
+const completedFreeSession = {
+  ...freeSession,
+  completed: true,
+  completedAt: now,
+  reviewCharacters: ['あ', 'い'],
+}
+assert.equal(canPromoteFreePracticeErrors(completedFreeSession), true)
+const promotedCards = promoteCharactersToFsrs({}, ['あ', 'い', 'あ'], new Date(now))
+assert.deepEqual(Object.keys(promotedCards).sort(), ['あ:sound', 'い:sound'])
+assert.ok(Object.values(promotedCards).every((item) => item.card.reps === 1 && item.promptMode === 'sound'))
+assert.equal(canPromoteFreePracticeErrors({ ...completedFreeSession, freePracticePromotedAt: now }), false)
+assert.equal(canPromoteFreePracticeErrors({ ...completedFreeSession, mode: 'scheduled' }), false)
 
 const dueCompletion = getCompletionStatus({ [getFsrsCardKey('あ')]: record('あ', now - 1) }, 'mixed', now)
 assert.equal(dueCompletion.dueRemaining, 1)
@@ -207,6 +223,24 @@ assert.equal(futureCompletion.nextDueCount, 2)
 assert.equal(canOfferFreePractice({ ...scheduled, completed: true, completedAt: now }, futureCompletion), true)
 assert.equal(canOfferFreePractice(scheduled, futureCompletion), false, '완료 화면이 아니면 자유 연습을 노출하면 안 됩니다.')
 
+const homeStats = getHomeStats(
+  {
+    [getFsrsCardKey('あ')]: record('あ', now - 1),
+    [getFsrsCardKey('い')]: record('い', now + 1_000),
+  },
+  {
+    あ: { shown: 3, correct: 2, wrong: 1, lastStudiedAt: 'saved' },
+    い: { shown: 1, correct: 1, wrong: 0, lastStudiedAt: 'saved' },
+  },
+  'hiragana',
+  now,
+)
+assert.equal(homeStats.due, 1)
+assert.equal(homeStats.checked, 2)
+assert.equal(homeStats.firstCheckRemaining, 44)
+assert.equal(homeStats.attempts, 4)
+assert.equal(homeStats.accuracy, 75)
+
 memory.clear()
 saveFsrsCards({ [correctRecord.key]: correctRecord })
 assert.deepEqual(loadFsrsCards(), { [correctRecord.key]: correctRecord })
@@ -218,6 +252,9 @@ memory.clear()
 saveSession(afterNext)
 assert.deepEqual(loadSession(), afterNext, 'v2 세션은 새로고침 후 동일하게 복원되어야 합니다.')
 assert.ok(memory.has(SESSION_V2_KEY))
+const { freePracticePromotedAt: _oldMissingField, ...oldV2Session } = afterNext
+memory.set(SESSION_V2_KEY, JSON.stringify(oldV2Session))
+assert.equal(loadSession()?.freePracticePromotedAt, null, '이전 v2 세션의 새 필드는 안전하게 기본값으로 보완해야 합니다.')
 
 const legacy: LegacySessionV1 = {
   version: 1,
@@ -270,6 +307,9 @@ updateProgress('あ', true)
 const progress = JSON.parse(memory.get(PROGRESS_KEY)!)
 assert.equal(progress.あ.shown, 1)
 assert.equal(progress.あ.correct, 1)
+assert.deepEqual(loadProgress(), progress)
+memory.set(PROGRESS_KEY, '{broken')
+assert.deepEqual(loadProgress(), {})
 
 console.log([
   '검증 통과: 92자 데이터와 선택지 규칙',
@@ -279,6 +319,8 @@ console.log([
   '최초 응답 1회/오답 재도전 1회',
   'Trigger·자유 연습·재도전 제외 정책',
   '완료 화면 자유 연습 조건',
+  '자유 연습 오답의 선택적 FSRS 등록',
+  '홈 학습 통계 계산',
   'Date 직렬화/현지 날짜 경계',
   'v1→v2 마이그레이션/손상 데이터 복구',
 ].join('\n'))

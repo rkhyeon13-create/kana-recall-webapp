@@ -7,7 +7,7 @@ import {
   type CardInput,
 } from 'ts-fsrs'
 import { KANA_BY_CHARACTER } from '../data/kana'
-import type { FsrsCardRecord, SerializedFsrsCard } from '../types'
+import type { FsrsCardMap, FsrsCardRecord, SerializedFsrsCard } from '../types'
 
 export const FSRS_PACKAGE_VERSION = '5.4.2'
 export const FSRS_PARAMETERS = {
@@ -66,6 +66,20 @@ export function createFsrsRecord(
     promptMode: 'sound',
     card: serializeCard(result.card),
   }
+}
+
+export function promoteCharactersToFsrs(
+  cards: FsrsCardMap,
+  characters: readonly string[],
+  now: Date = new Date(),
+): FsrsCardMap {
+  const next = { ...cards }
+  for (const character of new Set(characters)) {
+    if (!KANA_BY_CHARACTER.has(character)) continue
+    const key = getFsrsCardKey(character)
+    next[key] = createFsrsRecord(character, false, now, next[key])
+  }
+  return next
 }
 
 export function isSerializedFsrsCard(value: unknown): value is SerializedFsrsCard {
