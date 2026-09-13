@@ -228,23 +228,33 @@ select {
 
 .feedback.success { background: #f2f7ff; border-color: #d7e5fb; }
 .feedback.error { background: #f3f5f8; border-color: #dfe4ea; }
-.feedback h2 { margin: 0; font-size: 1.25rem; }
+.feedback h2 { margin: 0; font-size: clamp(1rem, 4.6vw, 1.25rem); }
 .feedback .feedback-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  line-height: 1.35;
+  min-height: 30px;
+  line-height: 1;
 }
 .feedback .feedback-title > span:last-child { font-family: inherit; font-size: inherit; }
 .feedback .feedback-title-text {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  height: 30px;
   column-gap: .3em;
+  line-height: 1;
+}
+.feedback .feedback-title-copy {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  white-space: nowrap;
 }
 .feedback .answer-character {
   display: inline-flex;
   align-items: center;
+  height: 30px;
   font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
   font-size: 1.3em;
   font-weight: 700;

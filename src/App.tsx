@@ -408,7 +408,7 @@ export default function App() {
                 <h2 className="feedback-title">
                   <span className="status-badge" aria-hidden="true">X</span>
                   <span className="feedback-title-text">
-                    <span>오답이에요 · 정답은</span>
+                    <span className="feedback-title-copy">오답이에요 · 정답은</span>
                     <span className="answer-character" lang="ja">{currentKana.character}</span>
                   </span>
                 </h2>
