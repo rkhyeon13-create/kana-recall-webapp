@@ -233,7 +233,7 @@ select {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 30px;
+  min-height: 24px;
   line-height: 1;
 }
 .feedback .feedback-title > span:last-child { font-family: inherit; font-size: inherit; }
@@ -241,20 +241,20 @@ select {
   display: inline-flex;
   align-items: center;
   flex-wrap: nowrap;
-  height: 30px;
+  height: 24px;
   column-gap: .3em;
   line-height: 1;
 }
 .feedback .feedback-title-copy {
   display: inline-flex;
   align-items: center;
-  height: 30px;
+  height: 24px;
   white-space: nowrap;
 }
 .feedback .answer-character {
   display: inline-flex;
   align-items: center;
-  height: 30px;
+  height: 24px;
   font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
   font-size: inherit;
   font-weight: 700;
@@ -262,13 +262,13 @@ select {
 }
 .status-badge {
   display: inline-grid;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   color: #fff;
   background: var(--accent);
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: inherit !important;
   font-size: 1rem !important;
   font-weight: 800;
