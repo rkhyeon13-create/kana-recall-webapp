@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.validation/
+*.tsbuildinfo
+.DS_Store
