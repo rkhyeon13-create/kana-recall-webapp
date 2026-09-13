@@ -269,6 +269,7 @@ select {
 .feedback.error .status-badge { background: #c64740; }
 .feedback p { margin: 7px 0 0; color: #454d5a; line-height: 1.55; }
 .feedback .feedback-trigger { margin-top: 13px; color: #202632; font-weight: 750; }
+.feedback .feedback-description { color: var(--muted); font-size: .9rem; }
 .feedback .repair-guide { color: var(--muted); font-size: .9rem; }
 
 .primary-action {

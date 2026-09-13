@@ -393,7 +393,11 @@ export default function App() {
                     <p>{currentKana.description}</p>
                   </>
                 ) : (
-                  <p>소리 <strong>{currentKana.sound}</strong>와 글자 <strong lang="ja">{currentKana.character}</strong>를 올바르게 연결했어요.</p>
+                  <>
+                    <p>소리 <strong>{currentKana.sound}</strong>와 글자 <strong lang="ja">{currentKana.character}</strong>를 올바르게 연결했어요.</p>
+                    <p className="feedback-trigger">{currentKana.trigger}</p>
+                    <p className="feedback-description">{currentKana.description}</p>
+                  </>
                 )}
               </>
             ) : (
