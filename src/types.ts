@@ -34,6 +34,7 @@ export interface ScheduledSessionItem {
 export interface Session {
   version: 2
   id: string
+  startedAt: number | null
   settings: Settings
   mode: SessionMode
   items: ScheduledSessionItem[]

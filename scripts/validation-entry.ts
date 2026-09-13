@@ -23,6 +23,7 @@ import {
   createTriggerPracticeSession,
   DEFAULT_SETTINGS,
   getCompletionStatus,
+  getHomeAction,
   getHomeStats,
   MAX_SESSION_SIZE,
   OPTIONS_DELAY_MS,
@@ -240,6 +241,13 @@ assert.equal(homeStats.checked, 2)
 assert.equal(homeStats.firstCheckRemaining, 44)
 assert.equal(homeStats.attempts, 4)
 assert.equal(homeStats.accuracy, 75)
+assert.equal(getHomeAction(scheduled, homeStats), 'start')
+assert.equal(getHomeAction({ ...scheduled, startedAt: now }, homeStats), 'resume')
+assert.equal(getHomeAction({ ...scheduled, completed: true, completedAt: now }, homeStats), 'continue')
+assert.equal(getHomeAction(
+  { ...scheduled, completed: true, completedAt: now },
+  { ...homeStats, due: 0, firstCheckRemaining: 0 },
+), 'free-practice')
 
 memory.clear()
 saveFsrsCards({ [correctRecord.key]: correctRecord })
@@ -252,9 +260,14 @@ memory.clear()
 saveSession(afterNext)
 assert.deepEqual(loadSession(), afterNext, 'v2 세션은 새로고침 후 동일하게 복원되어야 합니다.')
 assert.ok(memory.has(SESSION_V2_KEY))
-const { freePracticePromotedAt: _oldMissingField, ...oldV2Session } = afterNext
+const {
+  freePracticePromotedAt: _oldMissingPromotionField,
+  startedAt: _oldMissingStartedAtField,
+  ...oldV2Session
+} = afterNext
 memory.set(SESSION_V2_KEY, JSON.stringify(oldV2Session))
 assert.equal(loadSession()?.freePracticePromotedAt, null, '이전 v2 세션의 새 필드는 안전하게 기본값으로 보완해야 합니다.')
+assert.equal(typeof loadSession()?.startedAt, 'number', '진행 중인 이전 v2 세션은 시작 시각을 안전하게 보완해야 합니다.')
 
 const legacy: LegacySessionV1 = {
   version: 1,

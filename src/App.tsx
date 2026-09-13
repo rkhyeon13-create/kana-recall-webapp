@@ -11,6 +11,7 @@ import {
   canPromoteFreePracticeErrors,
   DEFAULT_SETTINGS,
   getCompletionStatus,
+  getHomeAction,
   getHomeStats,
   shouldRecordFsrs,
   shouldRecordLongTermProgress,
@@ -107,6 +108,7 @@ export default function App() {
     () => getHomeStats(cards, progress, 'mixed'),
     [cards, progress],
   )
+  const homeAction = getHomeAction(session, homeStats)
 
   useEffect(() => saveSession(session), [session])
 
@@ -168,7 +170,7 @@ export default function App() {
   })
 
   const restart = (settings: Settings = session.settings) => {
-    setSession(newSession(settings, cards, initial.firstCheckOrder))
+    setSession({ ...newSession(settings, cards, initial.firstCheckOrder), startedAt: Date.now() })
   }
 
   const changeSetting = (key: 'range' | 'promptMode', value: KanaRange | PromptMode) => {
@@ -176,7 +178,7 @@ export default function App() {
   }
 
   const startFreePractice = () => {
-    setSession(createFreePracticeSession(session.settings))
+    setSession({ ...createFreePracticeSession(session.settings), startedAt: Date.now() })
     setView('quiz')
   }
 
@@ -192,21 +194,37 @@ export default function App() {
   }
 
   const startFromHome = () => {
-    if (session.completed) {
-      setSession(createScheduledSession({ ...session.settings, range: 'mixed', promptMode: 'sound' }, cards, initial.firstCheckOrder))
+    const startedAt = Date.now()
+    if (homeAction === 'continue') {
+      setSession({
+        ...createScheduledSession({ ...session.settings, range: 'mixed', promptMode: 'sound' }, cards, initial.firstCheckOrder),
+        startedAt,
+      })
+    } else if (homeAction === 'free-practice') {
+      setSession({
+        ...createFreePracticeSession({ ...session.settings, range: 'mixed', promptMode: 'sound' }),
+        startedAt,
+      })
+    } else if (homeAction === 'start') {
+      setSession({ ...session, startedAt })
     }
     setView('quiz')
   }
 
   if (view === 'home') {
-    const hasStartedSession = session.index > 0 || session.answer !== null
+    const homeButtonLabel = {
+      start: '학습 시작',
+      continue: '계속 학습',
+      resume: '이어서 학습',
+      'free-practice': '자유 연습 시작',
+    }[homeAction]
     return (
       <main className="app-shell">
         <section className="card home-card" aria-labelledby="home-title">
           <header className="home-header">
             <p className="eyebrow">도전! 일본어</p>
             <h1 id="home-title">오늘의 가나 학습</h1>
-            <p>학습 기록에 따라 다음 복습 시점이 자동으로 조정돼요.</p>
+            <p>학습 기록에 따라 복습 시점이 자동으로 조정돼요.</p>
           </header>
           <div className="home-stats" aria-label="학습 통계">
             <div><strong>{homeStats.due}</strong><span>남은 복습</span></div>
@@ -215,9 +233,7 @@ export default function App() {
             <div><strong>{homeStats.accuracy === null ? '—' : `${homeStats.accuracy}%`}</strong><span>누적 정답률</span></div>
           </div>
           <button className="primary-action" type="button" onClick={startFromHome}>
-            {session.completed
-              ? (homeStats.due > 0 ? '오늘 복습 시작' : '학습 시작')
-              : hasStartedSession ? '이어서 학습' : '학습 시작'}
+            {homeButtonLabel}
           </button>
           <p className="local-note">학습 기록은 이 기기의 브라우저에만 저장됩니다.</p>
         </section>

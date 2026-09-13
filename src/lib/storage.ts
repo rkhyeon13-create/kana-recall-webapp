@@ -54,6 +54,11 @@ function isValidSession(value: unknown): value is Session {
   if (
     session.version !== 2 ||
     typeof session.id !== 'string' ||
+    !(
+      session.startedAt === undefined ||
+      session.startedAt === null ||
+      (typeof session.startedAt === 'number' && Number.isFinite(session.startedAt))
+    ) ||
     !isSettings(session.settings) ||
     !modes.includes(session.mode as SessionMode) ||
     !Array.isArray(items) ||
@@ -88,6 +93,11 @@ function isValidSession(value: unknown): value is Session {
 function normalizeSession(session: Session): Session {
   return {
     ...session,
+    startedAt: session.startedAt === undefined ? (
+      session.index > 0 || session.answer !== null
+        ? Math.max(0, session.optionsVisibleAt - 2_000)
+        : null
+    ) : session.startedAt,
     freePracticePromotedAt: session.freePracticePromotedAt ?? null,
   }
 }
@@ -131,6 +141,9 @@ export function migrateSessionV1(session: LegacySessionV1): Session {
   return {
     version: 2,
     id: session.id,
+    startedAt: session.index > 0 || session.answer !== null
+      ? Math.max(0, session.optionsVisibleAt - 2_000)
+      : null,
     settings: session.settings,
     mode: 'legacy-practice',
     items,

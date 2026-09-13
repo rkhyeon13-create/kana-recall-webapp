@@ -105,6 +105,7 @@ function buildSession(
   return {
     version: 2,
     id,
+    startedAt: null,
     settings,
     mode,
     items,
@@ -274,6 +275,13 @@ export function canPromoteFreePracticeErrors(session: Session): boolean {
     session.reviewCharacters.length > 0 &&
     session.freePracticePromotedAt === null
   )
+}
+
+export type HomeAction = 'start' | 'continue' | 'resume' | 'free-practice'
+
+export function getHomeAction(session: Session, stats: HomeStats): HomeAction {
+  if (!session.completed) return session.startedAt === null ? 'start' : 'resume'
+  return stats.due > 0 || stats.firstCheckRemaining > 0 ? 'continue' : 'free-practice'
 }
 
 export function getHomeStats(
