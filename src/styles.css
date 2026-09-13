@@ -228,7 +228,7 @@ select {
 
 .feedback.success { background: #f2f7ff; border-color: #d7e5fb; }
 .feedback.error { background: #f3f5f8; border-color: #dfe4ea; }
-.feedback h2 { margin: 0; font-size: clamp(1rem, 4.6vw, 1.25rem); }
+.feedback h2 { margin: 0; font-size: 1rem; }
 .feedback .feedback-title {
   display: flex;
   align-items: center;
@@ -256,7 +256,7 @@ select {
   align-items: center;
   height: 30px;
   font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
-  font-size: 1.3em;
+  font-size: inherit;
   font-weight: 700;
   line-height: 1;
 }
@@ -270,7 +270,7 @@ select {
   background: var(--accent);
   border-radius: 8px;
   font-family: inherit !important;
-  font-size: .9rem !important;
+  font-size: 1rem !important;
   font-weight: 800;
   line-height: 1;
 }
