@@ -28,9 +28,9 @@ import {
 import type { FirstCheckOrder, FsrsCardMap, KanaRange, ProgressMap, PromptMode, Session, Settings } from './types'
 
 const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
-  { value: 'hiragana', label: '히라가나 46자' },
-  { value: 'katakana', label: '가타카나 46자' },
-  { value: 'mixed', label: '랜덤 혼합 92자' },
+  { value: 'katakana', label: '가타카나' },
+  { value: 'hiragana', label: '히라가나' },
+  { value: 'mixed', label: '랜덤혼합' },
 ]
 
 const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
@@ -407,7 +407,7 @@ export default function App() {
               <>
                 <h2 className="feedback-title">
                   <span className="status-badge" aria-hidden="true">X</span>
-                  <span>오답이에요 · 정답은 <span lang="ja">{currentKana.character}</span></span>
+                  <span>오답이에요 · 정답은 <span className="answer-character" lang="ja">{currentKana.character}</span></span>
                 </h2>
                 <p className="repair-guide">연상 Trigger로 문자와 소리를 다시 연결해보세요.</p>
                 <p className="feedback-trigger">{currentKana.trigger}</p>
