@@ -407,7 +407,10 @@ export default function App() {
               <>
                 <h2 className="feedback-title">
                   <span className="status-badge" aria-hidden="true">X</span>
-                  <span>오답이에요 · 정답은 <span className="answer-character" lang="ja">{currentKana.character}</span></span>
+                  <span className="feedback-title-text">
+                    <span>오답이에요 · 정답은</span>
+                    <span className="answer-character" lang="ja">{currentKana.character}</span>
+                  </span>
                 </h2>
                 <p className="repair-guide">연상 Trigger로 문자와 소리를 다시 연결해보세요.</p>
                 <p className="feedback-trigger">{currentKana.trigger}</p>
