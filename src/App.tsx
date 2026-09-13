@@ -125,7 +125,8 @@ export default function App() {
         </div>
 
         <div className="question" key={`${session.id}-${session.index}`}>
-          <p className="question-meta">{KIND_LABEL[currentKana.kind]} · {prompt}</p>
+          <p className="question-kind">{KIND_LABEL[currentKana.kind]} ·</p>
+          <p className="question-meta">{prompt}</p>
           <p className="recall-guide">정답 글자를 머릿속으로 떠올려보세요</p>
         </div>
 
