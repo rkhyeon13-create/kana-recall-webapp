@@ -202,7 +202,7 @@ select {
 }
 
 .choice.correct { color: #1558b0; background: #e7f1ff; border-color: var(--accent); }
-.choice.wrong { color: #8b2e2e; background: #fdebea; border-color: #d76661; }
+.choice.wrong { color: #394454; background: #e1e6ed; border-color: #7b8798; }
 .choice.muted { color: #98a0ab; background: #f6f7f9; border-color: #e3e6ea; }
 
 .feedback {
@@ -213,7 +213,7 @@ select {
 }
 
 .feedback.success { background: #f2f7ff; border-color: #d7e5fb; }
-.feedback.error { background: #fff3f2; border-color: #f2cfcb; }
+.feedback.error { background: #f3f5f8; border-color: #dfe4ea; }
 .feedback h2 { margin: 0; font-size: 1.25rem; }
 .feedback h2 span { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 1.55em; }
 .feedback .feedback-title {
