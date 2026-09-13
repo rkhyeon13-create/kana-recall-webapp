@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
-import { advanceSession, answerSession, createSession, DEFAULT_SETTINGS } from './lib/quiz'
-import { loadSession, saveSession, updateProgress } from './lib/storage'
-import type { PromptMode, KanaRange, Session, Settings } from './types'
+import { createFsrsRecord, getFsrsCardKey, localDateKey } from './lib/fsrs'
+import {
+  advanceSession,
+  answerSession,
+  createFreePracticeSession,
+  createScheduledSession,
+  createTriggerPracticeSession,
+  canOfferFreePractice,
+  DEFAULT_SETTINGS,
+  getCompletionStatus,
+  shouldRecordFsrs,
+  shouldRecordLongTermProgress,
+} from './lib/quiz'
+import {
+  loadFsrsCards,
+  loadOrCreateFirstCheckOrder,
+  loadSession,
+  saveFsrsCards,
+  saveSession,
+  updateProgress,
+} from './lib/storage'
+import type { FirstCheckOrder, FsrsCardMap, KanaRange, PromptMode, Session, Settings } from './types'
 
 const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
   { value: 'hiragana', label: '히라가나 46자' },
@@ -11,21 +30,70 @@ const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
 ]
 
 const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
-  { value: 'trigger', label: '연상 Trigger' },
   { value: 'sound', label: '소리' },
+  { value: 'trigger', label: '연상 Trigger' },
 ]
 
-function makeSession(settings: Settings = DEFAULT_SETTINGS): Session {
-  return createSession({ ...settings })
+interface InitialState {
+  cards: FsrsCardMap
+  firstCheckOrder: FirstCheckOrder
+  session: Session
+}
+
+function newSession(
+  settings: Settings,
+  cards: FsrsCardMap,
+  firstCheckOrder: FirstCheckOrder,
+  now = Date.now(),
+): Session {
+  return settings.promptMode === 'sound'
+    ? createScheduledSession(settings, cards, firstCheckOrder, now)
+    : createTriggerPracticeSession(settings, now)
+}
+
+function initialize(): InitialState {
+  const cards = loadFsrsCards()
+  const firstCheckOrder = loadOrCreateFirstCheckOrder()
+  const stored = loadSession()
+  if (!stored) return { cards, firstCheckOrder, session: newSession(DEFAULT_SETTINGS, cards, firstCheckOrder) }
+
+  const isNewLocalDay = stored.completedAt !== null && localDateKey(stored.completedAt) !== localDateKey(Date.now())
+  if (stored.completed && isNewLocalDay) {
+    return {
+      cards,
+      firstCheckOrder,
+      session: createScheduledSession({ ...stored.settings, promptMode: 'sound' }, cards, firstCheckOrder),
+    }
+  }
+  return { cards, firstCheckOrder, session: stored }
+}
+
+function formatNextReview(timestamp: number | null, count: number, now = Date.now()): string {
+  if (timestamp === null) return '다음 복습: 예정 없음'
+  const due = new Date(timestamp)
+  const current = new Date(now)
+  const todayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate()).getTime()
+  const dueStart = new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime()
+  const dayDifference = Math.round((dueStart - todayStart) / 86_400_000)
+  const dateLabel = dayDifference === 0
+    ? `오늘 ${due.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}`
+    : dayDifference === 1
+      ? '내일'
+      : due.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
+  return `다음 복습: ${dateLabel} ${count}자`
 }
 
 export default function App() {
-  const [session, setSession] = useState<Session>(() => loadSession() ?? makeSession())
+  const [initial] = useState<InitialState>(initialize)
+  const [cards, setCards] = useState<FsrsCardMap>(initial.cards)
+  const [session, setSession] = useState<Session>(initial.session)
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
-  const currentKana = useMemo(
-    () => KANA_BY_CHARACTER.get(session.queue[session.index])!,
-    [session.index, session.queue],
+  const currentItem = session.items[session.index]
+  const currentKana = currentItem ? KANA_BY_CHARACTER.get(currentItem.character) : undefined
+  const completion = useMemo(
+    () => getCompletionStatus(cards, session.settings.range),
+    [cards, session.settings.range],
   )
 
   useEffect(() => saveSession(session), [session])
@@ -41,10 +109,28 @@ export default function App() {
   }, [session.answer, session.completed, session.index, session.optionsVisibleAt])
 
   const choose = (character: string) => {
-    if (!choicesVisible || session.answer || session.completed) return
+    if (!choicesVisible || session.answer || session.completed || !currentItem || !currentKana) return
     const correct = character === currentKana.character
-    updateProgress(currentKana.character, correct)
-    setSession((current) => answerSession(current, character))
+    const recordWithFsrs = shouldRecordFsrs(session, currentItem)
+    let recorded = false
+
+    if (recordWithFsrs) {
+      try {
+        const key = getFsrsCardKey(currentKana.character)
+        const record = createFsrsRecord(currentKana.character, correct, new Date(), cards[key])
+        const nextCards = { ...cards, [key]: record }
+        setCards(nextCards)
+        saveFsrsCards(nextCards)
+        recorded = true
+      } catch {
+        // A scheduler failure must not prevent answer feedback or session progress.
+      }
+    }
+
+    if (shouldRecordLongTermProgress(session, currentItem)) updateProgress(currentKana.character, correct)
+    const answeredSession = answerSession(session, character, recorded)
+    saveSession(answeredSession)
+    setSession(answeredSession)
   }
 
   const next = () => setSession((current) => advanceSession(current))
@@ -67,18 +153,41 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   })
 
-  const restart = (settings: Settings = session.settings) => setSession(makeSession(settings))
+  const restart = (settings: Settings = session.settings) => {
+    setSession(newSession(settings, cards, initial.firstCheckOrder))
+  }
 
   const changeSetting = (key: 'range' | 'promptMode', value: KanaRange | PromptMode) => {
     restart({ ...session.settings, [key]: value })
   }
 
+  const startFreePractice = () => {
+    setSession(createFreePracticeSession(session.settings))
+  }
+
   if (session.completed) {
+    const isScheduled = session.mode === 'scheduled'
+    const showsSchedule = isScheduled || session.mode === 'free-practice'
+    const hasDueRemaining = showsSchedule && completion.dueRemaining > 0
+    const title = hasDueRemaining
+      ? `${session.initialItemCount}문제 완료`
+      : isScheduled
+        ? '오늘 복습을 마쳤어요'
+        : session.mode === 'free-practice'
+          ? '자유 연습을 마쳤어요'
+          : session.mode === 'trigger-practice'
+            ? '연상 학습을 마쳤어요'
+            : '이번 세션을 마쳤어요'
+
     return (
       <main className="app-shell">
         <section className="card summary-card" aria-labelledby="summary-title">
           <p className="eyebrow">학습 완료</p>
-          <h1 id="summary-title">이번 세션을 마쳤어요</h1>
+          <h1 id="summary-title">{title}</h1>
+          {hasDueRemaining && <p className="schedule-note">오늘 복습 {completion.dueRemaining}자 남음</p>}
+          {showsSchedule && !hasDueRemaining && (
+            <p className="schedule-note">{formatNextReview(completion.nextDueAt, completion.nextDueCount)}</p>
+          )}
           <div className="summary-numbers">
             <div><strong>{session.correctCount}</strong><span>정답</span></div>
             <div><strong>{session.wrongCount}</strong><span>오답</span></div>
@@ -87,16 +196,46 @@ export default function App() {
             <span>다시 복습한 글자</span>
             <strong lang="ja">{session.reviewCharacters.length ? session.reviewCharacters.join(' · ') : '없음'}</strong>
           </div>
-          <button className="primary-action" type="button" onClick={() => restart()}>
-            새 세션 시작
-          </button>
+
+          {hasDueRemaining ? (
+            <button className="primary-action" type="button" onClick={() => restart({ ...session.settings, promptMode: 'sound' })}>
+              계속 복습
+            </button>
+          ) : canOfferFreePractice(session, completion) ? (
+            <button className="secondary-action" type="button" onClick={startFreePractice}>
+              자유 연습 시작
+            </button>
+          ) : session.mode === 'free-practice' ? (
+            <button className="secondary-action" type="button" onClick={startFreePractice}>
+              자유 연습 다시 시작
+            </button>
+          ) : (
+            <button
+              className="primary-action"
+              type="button"
+              onClick={() => restart(session.mode === 'legacy-practice' ? { ...session.settings, promptMode: 'sound' } : session.settings)}
+            >
+              {session.mode === 'legacy-practice' ? '예약 학습 시작' : '새 세션 시작'}
+            </button>
+          )}
         </section>
       </main>
     )
   }
 
+  if (!currentItem || !currentKana) return null
+
   const prompt = session.settings.promptMode === 'trigger' ? currentKana.trigger : currentKana.sound
-  const progressText = `${session.index + 1} / ${session.queue.length}`
+  const progressText = `${session.index + 1} / ${session.items.length}`
+  const contextLabel = currentItem.source === 'due'
+    ? '오늘 복습'
+    : currentItem.source === 'first-check'
+      ? '첫 확인'
+      : currentItem.source === 'retry'
+        ? '다시 인출'
+        : session.mode === 'free-practice'
+          ? '자유 연습'
+          : '연상 학습'
 
   return (
     <main className="app-shell">
@@ -106,7 +245,10 @@ export default function App() {
             <p className="eyebrow">도전! 일본어</p>
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
-          <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
+          <div className="progress-group">
+            <span className="session-context">{contextLabel}</span>
+            <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
+          </div>
         </header>
 
         <div className="settings" aria-label="문제 설정">
@@ -167,8 +309,14 @@ export default function App() {
                   <span className="status-badge" aria-hidden="true">O</span>
                   <span>맞았어요</span>
                 </h2>
-                <p className="feedback-trigger">{currentKana.trigger}</p>
-                <p>{currentKana.description}</p>
+                {session.settings.promptMode === 'trigger' ? (
+                  <>
+                    <p className="feedback-trigger">{currentKana.trigger}</p>
+                    <p>{currentKana.description}</p>
+                  </>
+                ) : (
+                  <p>소리 <strong>{currentKana.sound}</strong>와 글자 <strong lang="ja">{currentKana.character}</strong>를 올바르게 연결했어요.</p>
+                )}
               </>
             ) : (
               <>
@@ -176,6 +324,7 @@ export default function App() {
                   <span className="status-badge" aria-hidden="true">X</span>
                   <span>오답이에요 · 정답은 <span lang="ja">{currentKana.character}</span></span>
                 </h2>
+                <p className="repair-guide">연상 Trigger로 문자와 소리를 다시 연결해보세요.</p>
                 <p className="feedback-trigger">{currentKana.trigger}</p>
                 <p>{currentKana.description}</p>
               </>

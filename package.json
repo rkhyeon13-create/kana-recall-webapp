@@ -15,7 +15,8 @@
     "vite": "latest",
     "typescript": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "ts-fsrs": "5.4.2"
   },
   "devDependencies": {
     "@types/react": "latest",

@@ -72,6 +72,21 @@ button:focus-visible, select:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.progress-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-context {
+  padding: 3px 8px;
+  color: #1558b0;
+  background: #e7f1ff;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 750;
+}
+
 .settings {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -240,6 +255,7 @@ select {
 .feedback.error .status-badge { background: #c64740; }
 .feedback p { margin: 7px 0 0; color: #454d5a; line-height: 1.55; }
 .feedback .feedback-trigger { margin-top: 13px; color: #202632; font-weight: 750; }
+.feedback .repair-guide { color: var(--muted); font-size: .9rem; }
 
 .primary-action {
   width: 100%;
@@ -255,8 +271,23 @@ select {
 
 .primary-action:hover { filter: brightness(.92); }
 
+.secondary-action {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 18px;
+  color: #1558b0;
+  background: #f2f7ff;
+  border: 1px solid #c9ddfb;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondary-action:hover { background: #e7f1ff; }
+
 .summary-card { padding: clamp(30px, 7vw, 58px); text-align: center; }
-.summary-card h1 { margin: 12px 0 30px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
+.summary-card h1 { margin: 12px 0 10px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
+.schedule-note { margin: 0 0 26px; color: var(--muted); }
 .summary-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .summary-numbers div, .review-summary { padding: 22px; background: #f8f9fb; border-radius: var(--radius); }
 .summary-numbers strong { display: block; font-size: 2.4rem; }
@@ -286,6 +317,7 @@ select {
   .choice-area { min-height: 216px; }
   .choice { min-height: 96px; }
   .feedback { padding: 16px; }
+  .progress-group { align-items: flex-end; flex-direction: column; gap: 2px; }
 }
 
 @media (max-height: 720px) and (min-width: 700px) {
