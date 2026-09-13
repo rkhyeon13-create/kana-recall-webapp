@@ -38,6 +38,63 @@ const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
   { value: 'trigger', label: '연상' },
 ]
 
+interface SettingDropdownProps<T extends string> {
+  id: string
+  label: string
+  value: T
+  options: { value: T; label: string }[]
+  isOpen: boolean
+  onToggle: () => void
+  onChange: (value: T) => void
+}
+
+function SettingDropdown<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  isOpen,
+  onToggle,
+  onChange,
+}: SettingDropdownProps<T>) {
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? value
+
+  return (
+    <div className="setting-field">
+      <span className="setting-label" id={`${id}-label`}>{label}</span>
+      <div className={`setting-picker ${isOpen ? 'is-open' : ''}`}>
+        <button
+          className="setting-summary"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-labelledby={`${id}-label ${id}-value`}
+          onClick={onToggle}
+        >
+          <span id={`${id}-value`}>{selectedLabel}</span>
+          <span className="setting-chevron" aria-hidden="true" />
+        </button>
+        {isOpen && (
+          <div className="setting-menu" role="listbox" aria-labelledby={`${id}-label`}>
+            {options.map((option) => (
+              <button
+                className={`setting-option ${option.value === value ? 'selected' : ''}`}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                key={option.value}
+                onClick={() => onChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface InitialState {
   cards: FsrsCardMap
   firstCheckOrder: FirstCheckOrder
@@ -96,6 +153,7 @@ export default function App() {
   const [progress, setProgress] = useState<ProgressMap>(initial.progress)
   const [session, setSession] = useState<Session>(initial.session)
   const [view, setView] = useState<'home' | 'quiz'>('home')
+  const [openSetting, setOpenSetting] = useState<'range' | 'promptMode' | null>(null)
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
   const currentItem = session.items[session.index]
@@ -111,6 +169,22 @@ export default function App() {
   const homeAction = getHomeAction(session, homeStats)
 
   useEffect(() => saveSession(session), [session])
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest('.setting-picker')) return
+      setOpenSetting(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenSetting(null)
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
 
   useEffect(() => {
     if (session.completed || session.answer || Date.now() >= session.optionsVisibleAt) {
@@ -174,6 +248,7 @@ export default function App() {
   }
 
   const changeSetting = (key: 'range' | 'promptMode', value: KanaRange | PromptMode) => {
+    setOpenSetting(null)
     restart({ ...session.settings, [key]: value })
   }
 
@@ -333,18 +408,24 @@ export default function App() {
         </header>
 
         <div className="settings" aria-label="문제 설정">
-          <label>
-            <span>문자 범위</span>
-            <select value={session.settings.range} onChange={(event) => changeSetting('range', event.target.value as KanaRange)}>
-              {RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>출제 방식</span>
-            <select value={session.settings.promptMode} onChange={(event) => changeSetting('promptMode', event.target.value as PromptMode)}>
-              {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
+          <SettingDropdown
+            id="range-setting"
+            label="문자 범위"
+            value={session.settings.range}
+            options={RANGE_OPTIONS}
+            isOpen={openSetting === 'range'}
+            onToggle={() => setOpenSetting((current) => current === 'range' ? null : 'range')}
+            onChange={(value) => changeSetting('range', value)}
+          />
+          <SettingDropdown
+            id="prompt-setting"
+            label="출제 방식"
+            value={session.settings.promptMode}
+            options={MODE_OPTIONS}
+            isOpen={openSetting === 'promptMode'}
+            onToggle={() => setOpenSetting((current) => current === 'promptMode' ? null : 'promptMode')}
+            onChange={(value) => changeSetting('promptMode', value)}
+          />
         </div>
 
         <div className="question" key={`${session.id}-${session.index}`}>
