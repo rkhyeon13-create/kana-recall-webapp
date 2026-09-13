@@ -163,13 +163,19 @@ export default function App() {
           <div className={`feedback ${session.answer.correct ? 'success' : 'error'}`} aria-live="assertive">
             {session.answer.correct ? (
               <>
-                <h2>맞았어요</h2>
+                <h2 className="feedback-title">
+                  <span className="status-badge" aria-hidden="true">O</span>
+                  <span>맞았어요</span>
+                </h2>
                 <p className="feedback-trigger">{currentKana.trigger}</p>
                 <p>{currentKana.description}</p>
               </>
             ) : (
               <>
-                <h2>정답은 <span lang="ja">{currentKana.character}</span></h2>
+                <h2 className="feedback-title">
+                  <span className="status-badge" aria-hidden="true">X</span>
+                  <span>오답이에요 · 정답은 <span lang="ja">{currentKana.character}</span></span>
+                </h2>
                 <p className="feedback-trigger">{currentKana.trigger}</p>
                 <p>{currentKana.description}</p>
               </>

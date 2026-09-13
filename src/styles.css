@@ -202,7 +202,7 @@ select {
 }
 
 .choice.correct { color: #1558b0; background: #e7f1ff; border-color: var(--accent); }
-.choice.wrong { color: #394454; background: #e1e6ed; border-color: #7b8798; }
+.choice.wrong { color: #8b2e2e; background: #fdebea; border-color: #d76661; }
 .choice.muted { color: #98a0ab; background: #f6f7f9; border-color: #e3e6ea; }
 
 .feedback {
@@ -213,9 +213,31 @@ select {
 }
 
 .feedback.success { background: #f2f7ff; border-color: #d7e5fb; }
-.feedback.error { background: #f3f5f8; border-color: #dfe4ea; }
+.feedback.error { background: #fff3f2; border-color: #f2cfcb; }
 .feedback h2 { margin: 0; font-size: 1.25rem; }
 .feedback h2 span { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 1.55em; }
+.feedback .feedback-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.35;
+}
+.feedback .feedback-title > span:last-child { font-family: inherit; font-size: inherit; }
+.status-badge {
+  display: inline-grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 8px;
+  font-family: inherit !important;
+  font-size: .9rem !important;
+  font-weight: 800;
+  line-height: 1;
+}
+.feedback.error .status-badge { background: #c64740; }
 .feedback p { margin: 7px 0 0; color: #454d5a; line-height: 1.55; }
 .feedback .feedback-trigger { margin-top: 13px; color: #202632; font-weight: 750; }
 
