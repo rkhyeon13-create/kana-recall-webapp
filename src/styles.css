@@ -201,20 +201,6 @@ select {
 .choice:disabled { opacity: 1; cursor: default; }
 .choice > span { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: clamp(3.2rem, 10vw, 5rem); line-height: 1; }
 
-.choice kbd {
-  position: absolute;
-  right: 11px;
-  bottom: 9px;
-  min-width: 22px;
-  padding: 2px 5px;
-  color: var(--muted);
-  background: rgba(255,255,255,.7);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  box-shadow: 0 1px 0 #c9ccc5;
-  font-size: .72rem;
-}
-
 .choice.correct { color: #1558b0; background: #e7f1ff; border-color: var(--accent); }
 .choice.wrong { color: #394454; background: #e1e6ed; border-color: #7b8798; }
 .choice.muted { color: #98a0ab; background: #f6f7f9; border-color: #e3e6ea; }

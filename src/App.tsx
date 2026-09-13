@@ -374,7 +374,6 @@ export default function App() {
                     aria-label={`${index + 1}번, ${character}`}
                   >
                     <span lang="ja">{character}</span>
-                    <kbd>{index + 1}</kbd>
                   </button>
                 )
               })}
