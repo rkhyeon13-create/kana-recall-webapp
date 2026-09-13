@@ -206,12 +206,12 @@ export default function App() {
           <header className="home-header">
             <p className="eyebrow">도전! 일본어</p>
             <h1 id="home-title">오늘의 가나 학습</h1>
-            <p>히라가나와 가타카나 총 92자 기준으로 학습 상태를 보여드려요.</p>
+            <p>학습 기록에 따라 다음 복습 시점이 자동으로 조정돼요.</p>
           </header>
           <div className="home-stats" aria-label="학습 통계">
-            <div><strong>{homeStats.due}</strong><span>오늘 복습</span></div>
-            <div><strong>{homeStats.firstCheckRemaining}</strong><span>첫 확인 남음</span></div>
-            <div><strong>{homeStats.checked}</strong><span>확인한 글자</span></div>
+            <div><strong>{homeStats.due}</strong><span>남은 복습</span></div>
+            <div><strong>{homeStats.firstCheckRemaining}</strong><span>학습 시작 전</span></div>
+            <div><strong>{homeStats.checked}</strong><span>학습 중</span></div>
             <div><strong>{homeStats.accuracy === null ? '—' : `${homeStats.accuracy}%`}</strong><span>누적 정답률</span></div>
           </div>
           <button className="primary-action" type="button" onClick={startFromHome}>
