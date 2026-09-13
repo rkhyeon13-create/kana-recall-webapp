@@ -35,7 +35,7 @@ const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
 
 const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
   { value: 'sound', label: '소리' },
-  { value: 'trigger', label: '연상 Trigger' },
+  { value: 'trigger', label: '연상' },
 ]
 
 interface InitialState {
