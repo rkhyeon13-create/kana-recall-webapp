@@ -103,7 +103,7 @@ export default function App() {
       <section className="card quiz-card" aria-labelledby="app-title">
         <header className="topbar">
           <div>
-            <p className="eyebrow">가나 떠올리기</p>
+            <p className="eyebrow">도전! 일본어</p>
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
           <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
@@ -162,7 +162,11 @@ export default function App() {
         {session.answer && (
           <div className={`feedback ${session.answer.correct ? 'success' : 'error'}`} aria-live="assertive">
             {session.answer.correct ? (
-              <h2>맞았어요</h2>
+              <>
+                <h2>맞았어요</h2>
+                <p className="feedback-trigger">{currentKana.trigger}</p>
+                <p>{currentKana.description}</p>
+              </>
             ) : (
               <>
                 <h2>정답은 <span lang="ja">{currentKana.character}</span></h2>

@@ -88,11 +88,15 @@ button:focus-visible, select:focus-visible {
 }
 
 select {
+  appearance: none;
   width: 100%;
   min-height: 46px;
-  padding: 0 38px 0 14px;
+  padding: 0 42px 0 14px;
   color: #202632;
-  background: #fff;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%236b7370' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
@@ -197,18 +201,19 @@ select {
   font-size: .72rem;
 }
 
-.choice.correct { color: #14583c; background: #dff2e6; border-color: #4e9a70; }
-.choice.wrong { color: #8f2c2c; background: #fbe3e1; border-color: #d46a62; }
-.choice.muted { color: #98a0ab; background: #f8f9fb; }
+.choice.correct { color: #1558b0; background: #e7f1ff; border-color: var(--accent); }
+.choice.wrong { color: #394454; background: #e1e6ed; border-color: #7b8798; }
+.choice.muted { color: #98a0ab; background: #f6f7f9; border-color: #e3e6ea; }
 
 .feedback {
   margin-top: 18px;
   padding: 18px;
+  border: 1px solid transparent;
   border-radius: 16px;
 }
 
-.feedback.success { background: #e8f4eb; }
-.feedback.error { background: #fbefec; }
+.feedback.success { background: #f2f7ff; border-color: #d7e5fb; }
+.feedback.error { background: #f3f5f8; border-color: #dfe4ea; }
 .feedback h2 { margin: 0; font-size: 1.25rem; }
 .feedback h2 span { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 1.55em; }
 .feedback p { margin: 7px 0 0; color: #454d5a; line-height: 1.55; }
