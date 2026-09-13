@@ -2,6 +2,8 @@
 
 기본 히라가나 46자와 가타카나 46자를 연상 Trigger 또는 소리로 떠올리는 독립 브라우저 웹앱입니다. 로그인, 서버, 데이터베이스, PWA 설치 기능 없이 정적 파일로 동작합니다.
 
+공개 앱: <https://rkhyeon13-create.github.io/kana-recall-webapp/>
+
 ## 실행
 
 Node.js 20 이상과 npm이 필요합니다.
