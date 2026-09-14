@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { Rating, State } from 'ts-fsrs'
 import type { Card } from 'ts-fsrs'
 import { KANA, KANA_BY_CHARACTER } from '../src/data/kana'
+import { WORDS, WORD_BY_ID, WORD_CATEGORIES } from '../src/data/words'
 import {
   createFsrsRecord,
   deserializeCard,
@@ -45,6 +46,26 @@ import {
   SESSION_V2_KEY,
   updateProgress,
 } from '../src/lib/storage'
+import {
+  advanceWordSession,
+  answerWordSession,
+  comparableWordAnswer,
+  createWordOptions,
+  createWordSession,
+  directionForMode,
+  getWordsForRange,
+  WORD_SESSION_SIZE,
+  wordAnswerText,
+} from '../src/lib/wordQuiz'
+import {
+  loadWordProgress,
+  loadWordSession,
+  recordWordProgress,
+  saveWordProgress,
+  saveWordSession,
+  WORD_PROGRESS_KEY,
+  WORD_SESSION_KEY,
+} from '../src/lib/wordStorage'
 import type {
   FirstCheckOrder,
   FsrsCardMap,
@@ -324,6 +345,93 @@ assert.deepEqual(loadProgress(), progress)
 memory.set(PROGRESS_KEY, '{broken')
 assert.deepEqual(loadProgress(), {})
 
+assert.equal(WORDS.length, 130, 'PDF의 학습 항목은 정확히 130개여야 합니다.')
+assert.equal(new Set(WORDS.map((word) => word.id)).size, 130)
+assert.deepEqual(
+  WORDS.map((word) => word.id),
+  Array.from({ length: 130 }, (_, index) => `word-${String(index + 1).padStart(3, '0')}`),
+  '단어 ID는 001부터 130까지 빠짐없이 이어져야 합니다.',
+)
+for (const word of WORDS) {
+  assert.ok(word.japanese && word.readingKo && word.meaningKo && word.category)
+  assert.ok(WORD_CATEGORIES.includes(word.category))
+}
+assert.deepEqual(
+  Object.fromEntries(WORD_CATEGORIES.map((category) => [category, getWordsForRange(category).length])),
+  {
+    '인사 및 기본 표현': 12,
+    '사람 및 가족': 16,
+    '숫자 및 시간': 18,
+    '장소': 14,
+    '주문 및 음식': 16,
+    '쇼핑 및 형용사': 18,
+    '수속 및 길 묻기': 16,
+    '동사': 20,
+  },
+)
+assert.equal(WORDS.filter((word) => word.japanese === 'これ / それ / あれ').length, 1)
+assert.equal(WORDS.filter((word) => word.japanese === '一つ / 二つ / 三つ').length, 1)
+assert.equal(WORDS.filter((word) => word.japanese === '右 / 左').length, 1)
+assert.deepEqual(WORDS.slice(117, 120).map((word) => word.japanese), ['見る', '観る', '診る'])
+
+for (const word of WORDS) {
+  for (const direction of ['meaning-to-japanese', 'japanese-to-meaning'] as const) {
+    const options = createWordOptions(word.id, direction, () => 0.37)
+    assert.equal(options.length, 4)
+    assert.equal(new Set(options).size, 4)
+    assert.equal(options.filter((id) => id === word.id).length, 1)
+    const answerKeys = options.map((id) => comparableWordAnswer(WORD_BY_ID.get(id)!, direction))
+    assert.equal(new Set(answerKeys).size, 4, `${word.id}에 사실상 같은 답이 중복됐습니다.`)
+    assert.equal(options.filter((id) => WORD_BY_ID.get(id)?.category === word.category).length, 4)
+  }
+}
+
+assert.equal(directionForMode('meaning-to-japanese'), 'meaning-to-japanese')
+assert.equal(directionForMode('japanese-to-meaning'), 'japanese-to-meaning')
+assert.equal(directionForMode('mixed', () => 0.1), 'meaning-to-japanese')
+assert.equal(directionForMode('mixed', () => 0.9), 'japanese-to-meaning')
+assert.equal(wordAnswerText(WORDS[0], 'meaning-to-japanese'), WORDS[0].japanese)
+assert.equal(wordAnswerText(WORDS[0], 'japanese-to-meaning'), WORDS[0].meaningKo)
+
+const wordSession = createWordSession('all', 'meaning-to-japanese', now, () => 0.37)
+assert.equal(wordSession.items.length, WORD_SESSION_SIZE)
+assert.equal(new Set(wordSession.items.map((item) => item.wordId)).size, WORD_SESSION_SIZE)
+assert.ok(wordSession.items.every((item) => item.direction === 'meaning-to-japanese'))
+assert.equal(wordSession.optionsVisibleAt - now, OPTIONS_DELAY_MS)
+assert.equal(wordSession.options.filter((id) => id === wordSession.items[0].wordId).length, 1)
+
+const categorySession = createWordSession('장소', 'japanese-to-meaning', now, () => 0.61)
+assert.ok(categorySession.items.every((item) => WORD_BY_ID.get(item.wordId)?.category === '장소'))
+assert.ok(categorySession.items.every((item) => item.direction === 'japanese-to-meaning'))
+
+const wordCorrectId = wordSession.items[0].wordId
+const wordWrongId = wordSession.options.find((id) => id !== wordCorrectId)!
+const afterWordWrong = answerWordSession(wordSession, wordWrongId)
+assert.equal(afterWordWrong.items.length, WORD_SESSION_SIZE + 1)
+assert.equal(afterWordWrong.items.at(-1)?.source, 'retry')
+assert.deepEqual(afterWordWrong.reviewWordIds, [wordCorrectId])
+const wordRetry = { ...afterWordWrong, index: afterWordWrong.items.length - 1, answer: null, completed: false, completedAt: null }
+const afterWordRetryWrong = answerWordSession(wordRetry, wordWrongId)
+assert.equal(afterWordRetryWrong.items.length, afterWordWrong.items.length, '단어 재도전은 한 번만 추가해야 합니다.')
+const advancedWordSession = advanceWordSession(afterWordWrong, now + 10_000, () => 0.42)
+assert.equal(advancedWordSession.index, 1)
+assert.equal(advancedWordSession.answer, null)
+
+memory.clear()
+saveWordSession(afterWordWrong)
+assert.deepEqual(loadWordSession(), afterWordWrong, '단어 세션은 새로고침 후 복원되어야 합니다.')
+assert.ok(memory.has(WORD_SESSION_KEY))
+const wordProgress = recordWordProgress({}, wordCorrectId, false, new Date(now))
+saveWordProgress(wordProgress)
+assert.deepEqual(loadWordProgress(), wordProgress)
+assert.ok(memory.has(WORD_PROGRESS_KEY))
+assert.notEqual(WORD_PROGRESS_KEY, PROGRESS_KEY)
+assert.notEqual(WORD_SESSION_KEY, SESSION_V2_KEY)
+memory.set(WORD_SESSION_KEY, '{broken')
+memory.set(WORD_PROGRESS_KEY, JSON.stringify({ [wordCorrectId]: { shown: Number.NaN, correct: 0, wrong: 0, lastStudiedAt: 'bad' } }))
+assert.equal(loadWordSession(), null)
+assert.deepEqual(loadWordProgress(), {})
+
 console.log([
   '검증 통과: 92자 데이터와 선택지 규칙',
   'due 우선/오래 지난 순서/범위/최대 10문제',
@@ -336,4 +444,7 @@ console.log([
   '홈 학습 통계 계산',
   'Date 직렬화/현지 날짜 경계',
   'v1→v2 마이그레이션/손상 데이터 복구',
+  '130개 단어 데이터/카테고리/묶음 항목 검증',
+  '단어 양방향 선택지/같은 답 중복 방지',
+  '단어 10문제 세션/오답 재도전/별도 저장/복원',
 ].join('\n'))

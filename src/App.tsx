@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
+import { SettingDropdown } from './SettingDropdown'
+import { WordModule } from './WordModule'
 import { createFsrsRecord, getFsrsCardKey, localDateKey, promoteCharactersToFsrs } from './lib/fsrs'
 import {
   advanceSession,
@@ -37,63 +39,6 @@ const MODE_OPTIONS: { value: PromptMode; label: string }[] = [
   { value: 'sound', label: '소리' },
   { value: 'trigger', label: '연상' },
 ]
-
-interface SettingDropdownProps<T extends string> {
-  id: string
-  label: string
-  value: T
-  options: { value: T; label: string }[]
-  isOpen: boolean
-  onToggle: () => void
-  onChange: (value: T) => void
-}
-
-function SettingDropdown<T extends string>({
-  id,
-  label,
-  value,
-  options,
-  isOpen,
-  onToggle,
-  onChange,
-}: SettingDropdownProps<T>) {
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? value
-
-  return (
-    <div className="setting-field">
-      <span className="setting-label" id={`${id}-label`}>{label}</span>
-      <div className={`setting-picker ${isOpen ? 'is-open' : ''}`}>
-        <button
-          className="setting-summary"
-          type="button"
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-labelledby={`${id}-label ${id}-value`}
-          onClick={onToggle}
-        >
-          <span id={`${id}-value`}>{selectedLabel}</span>
-          <span className="setting-chevron" aria-hidden="true" />
-        </button>
-        {isOpen && (
-          <div className="setting-menu" role="listbox" aria-labelledby={`${id}-label`}>
-            {options.map((option) => (
-              <button
-                className={`setting-option ${option.value === value ? 'selected' : ''}`}
-                type="button"
-                role="option"
-                aria-selected={option.value === value}
-                key={option.value}
-                onClick={() => onChange(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 interface InitialState {
   cards: FsrsCardMap
@@ -153,6 +98,7 @@ export default function App() {
   const [progress, setProgress] = useState<ProgressMap>(initial.progress)
   const [session, setSession] = useState<Session>(initial.session)
   const [view, setView] = useState<'home' | 'quiz'>('home')
+  const [module, setModule] = useState<'picker' | 'kana' | 'words'>('picker')
   const [openSetting, setOpenSetting] = useState<'range' | 'promptMode' | null>(null)
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
@@ -286,6 +232,35 @@ export default function App() {
     setView('quiz')
   }
 
+  if (module === 'picker') {
+    return (
+      <main className="app-shell">
+        <section className="card module-picker-card" aria-labelledby="module-picker-title">
+          <header className="module-picker-header">
+            <p className="eyebrow">도전! 일본어</p>
+            <h1 id="module-picker-title">무엇을 학습할까요?</h1>
+            <p>바로 시작할 학습 모듈을 선택해보세요.</p>
+          </header>
+          <div className="module-options">
+            <button type="button" className="module-option" onClick={() => setModule('kana')}>
+              <span className="module-option-count">92자</span>
+              <strong>가나</strong>
+              <span>히라가나와 가타카나</span>
+            </button>
+            <button type="button" className="module-option" onClick={() => setModule('words')}>
+              <span className="module-option-count">130개</span>
+              <strong>핵심 단어</strong>
+              <span>여행과 일상의 기본 어휘</span>
+            </button>
+          </div>
+          <p className="local-note">학습 기록은 이 기기의 브라우저에만 저장됩니다.</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (module === 'words') return <WordModule onBack={() => setModule('picker')} />
+
   if (view === 'home') {
     const homeButtonLabel = {
       start: '학습 시작',
@@ -297,7 +272,7 @@ export default function App() {
       <main className="app-shell">
         <section className="card home-card" aria-labelledby="home-title">
           <header className="home-header">
-            <p className="eyebrow">도전! 일본어</p>
+            <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
             <h1 id="home-title">오늘의 가나 학습</h1>
             <p>학습 기록에 따라 복습 시점이 자동으로 조정돼요.</p>
           </header>
@@ -333,7 +308,7 @@ export default function App() {
     return (
       <main className="app-shell">
         <section className="card summary-card" aria-labelledby="summary-title">
-          <button className="brand-button" type="button" onClick={() => setView('home')}>도전! 일본어</button>
+          <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
           <p className="eyebrow">학습 완료</p>
           <h1 id="summary-title">{title}</h1>
           {hasDueRemaining && <p className="schedule-note">오늘 복습 {completion.dueRemaining}자 남음</p>}
@@ -401,7 +376,7 @@ export default function App() {
       <section className="card quiz-card" aria-labelledby="app-title">
         <header className="topbar">
           <div>
-            <button className="brand-button" type="button" onClick={() => setView('home')}>도전! 일본어</button>
+            <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
           <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>

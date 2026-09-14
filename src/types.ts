@@ -117,3 +117,54 @@ export interface HomeStats {
   attempts: number
   accuracy: number | null
 }
+
+export type WordCategory =
+  | '인사 및 기본 표현'
+  | '사람 및 가족'
+  | '숫자 및 시간'
+  | '장소'
+  | '주문 및 음식'
+  | '쇼핑 및 형용사'
+  | '수속 및 길 묻기'
+  | '동사'
+
+export interface Word {
+  id: string
+  japanese: string
+  readingKo: string
+  meaningKo: string
+  category: WordCategory
+  note?: string
+  pronunciationWarning?: string
+}
+
+export type WordRange = 'all' | WordCategory
+export type WordPromptMode = 'meaning-to-japanese' | 'japanese-to-meaning' | 'mixed'
+export type WordDirection = Exclude<WordPromptMode, 'mixed'>
+
+export interface WordSessionItem {
+  id: string
+  wordId: string
+  direction: WordDirection
+  source: 'initial' | 'retry'
+}
+
+export interface WordSession {
+  version: 1
+  id: string
+  range: WordRange
+  promptMode: WordPromptMode
+  items: WordSessionItem[]
+  initialItemCount: number
+  index: number
+  options: string[]
+  optionsVisibleAt: number
+  answer: AnswerResult | null
+  correctCount: number
+  wrongCount: number
+  reviewWordIds: string[]
+  completed: boolean
+  completedAt: number | null
+}
+
+export type WordProgressMap = Record<string, KanaProgress>

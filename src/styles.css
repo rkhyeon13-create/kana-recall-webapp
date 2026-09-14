@@ -361,6 +361,76 @@ button:focus-visible {
 .home-stats span { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem; }
 .local-note { margin: 14px 0 0; color: var(--muted); font-size: .78rem; text-align: center; }
 
+.module-picker-card { padding: clamp(28px, 6vw, 52px); }
+.module-picker-header h1 { margin: 10px 0 4px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
+.module-picker-header > p:last-child { margin: 0; color: var(--muted); }
+.module-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 30px;
+}
+.module-option {
+  min-height: 190px;
+  padding: 26px 22px;
+  color: #202632;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.module-option:hover { border-color: #a9c9fb; background: #f8fbff; transform: translateY(-2px); }
+.module-option-count {
+  display: inline-block;
+  padding: 3px 9px;
+  color: #1558b0;
+  background: var(--surface-accent);
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 800;
+}
+.module-option strong { display: block; margin-top: 16px; font-size: clamp(1.45rem, 4vw, 2rem); }
+.module-option > span:last-child { display: block; margin-top: 5px; color: var(--muted); font-size: .9rem; }
+
+.word-question .question-meta {
+  font-size: clamp(1.4rem, 4.5vw, 2.15rem);
+  overflow-wrap: anywhere;
+}
+.word-question .question-meta[lang="ja"] { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; }
+.choice.word-choice { min-height: 112px; padding: 16px; }
+.choice.word-choice > span {
+  font-family: inherit;
+  font-size: clamp(1rem, 2.8vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.choice.word-choice > span[lang="ja"] { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; }
+.choice.word-choice.correct { color: #176b45; background: #eaf7ef; border-color: #3b996b; }
+.choice.word-choice.wrong { color: #a13b35; background: #fff0ef; border-color: #d95a52; }
+.choice.word-choice.muted { color: #98a0ab; background: #f6f7f9; border-color: #e3e6ea; }
+
+.word-feedback.success { background: #f0f8f3; border-color: #cce9d7; }
+.word-feedback.error { background: #fff4f3; border-color: #f0d0cd; }
+.word-feedback.success .status-badge { background: #27845b; }
+.word-answer-details { margin: 16px 0 0; }
+.word-answer-details div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(107, 115, 112, .15);
+}
+.word-answer-details dt { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.word-answer-details dd { margin: 0; color: #202632; font-weight: 700; overflow-wrap: anywhere; }
+.word-answer-details dd[lang="ja"] { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 1.25rem; }
+.word-feedback .pronunciation-warning { color: #9b3c35; font-weight: 700; }
+.word-feedback .word-note { color: var(--muted); font-size: .9rem; }
+.word-feedback .read-aloud-guide { margin-top: 14px; color: #202632; font-weight: 700; }
+.word-review-summary strong { overflow-wrap: anywhere; font-size: clamp(1.15rem, 3vw, 1.6rem); }
+
 .summary-card { padding: clamp(30px, 7vw, 58px); text-align: center; }
 .summary-card h1 { margin: 12px 0 10px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
 .schedule-note { margin: 0 0 26px; color: var(--muted); }
@@ -400,6 +470,13 @@ button:focus-visible {
   .feedback { padding: 16px; }
   .home-card { padding: 24px 18px; }
   .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
+  .module-picker-card { padding: 24px 18px; }
+  .module-options { grid-template-columns: 1fr; margin-top: 24px; }
+  .module-option { min-height: 132px; padding: 20px; }
+  .module-option strong { margin-top: 11px; }
+  .word-settings .setting-menu { max-height: 280px; }
+  .choice.word-choice { min-height: 96px; padding: 12px 10px; }
+  .word-answer-details div { grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
 }
 
 @media (max-height: 720px) and (min-width: 700px) {
