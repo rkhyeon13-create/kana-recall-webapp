@@ -45,7 +45,7 @@ export const WORDS: readonly Word[] = [
   { id: 'word-029', japanese: '一', readingKo: '이치', meaningKo: '1', category: '숫자 및 시간' },
   { id: 'word-030', japanese: '二', readingKo: '니', meaningKo: '2', category: '숫자 및 시간' },
   { id: 'word-031', japanese: '三', readingKo: '산', meaningKo: '3', category: '숫자 및 시간' },
-  { id: 'word-032', japanese: '四', readingKo: '욘 / 시', meaningKo: '4', category: '숫자 및 시간', note: 'PDF의 독음 표기 “용/시”를 명백한 오기로 판단해 “욘 / 시”로 바로잡았어요.' },
+  { id: 'word-032', japanese: '四', readingKo: '욘 / 시', meaningKo: '4', category: '숫자 및 시간' },
   { id: 'word-033', japanese: '五', readingKo: '고', meaningKo: '5', category: '숫자 및 시간' },
   { id: 'word-034', japanese: '六', readingKo: '로쿠', meaningKo: '6', category: '숫자 및 시간' },
   { id: 'word-035', japanese: '七', readingKo: '나나 / 시치', meaningKo: '7', category: '숫자 및 시간' },
