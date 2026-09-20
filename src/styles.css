@@ -347,6 +347,20 @@ button:focus-visible {
 .secondary-action:hover { background: #e7f1ff; }
 .secondary-action:disabled { color: var(--muted); background: #f3f5f8; border-color: var(--line); cursor: default; }
 
+.home-return-action {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 10px;
+  color: #394454;
+  background: #fff;
+  border: 1px solid #d9dee6;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-return-action:hover { color: #1558b0; background: #f8fbff; border-color: #a9c9fb; }
+
 .home-card { padding: clamp(28px, 6vw, 52px); }
 .home-header h1 { margin: 10px 0 4px; font-size: clamp(1.8rem, 5vw, 2.65rem); }
 .home-header > p:last-child { margin: 0; color: var(--muted); }

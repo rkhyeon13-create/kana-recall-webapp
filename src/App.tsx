@@ -361,6 +361,9 @@ export default function App() {
               {session.mode === 'legacy-practice' ? '예약 학습 시작' : '새 세션 시작'}
             </button>
           )}
+          <button className="home-return-action" type="button" onClick={() => setModule('picker')}>
+            홈으로 돌아가기
+          </button>
         </section>
       </main>
     )

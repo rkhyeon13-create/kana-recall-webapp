@@ -135,8 +135,8 @@ export function WordModule({ onBack }: WordModuleProps) {
           <button className="primary-action" type="button" onClick={() => restart()}>
             같은 범위 다시 학습
           </button>
-          <button className="secondary-action" type="button" onClick={onBack}>
-            다른 모듈 선택
+          <button className="home-return-action" type="button" onClick={onBack}>
+            홈으로 돌아가기
           </button>
         </section>
       </main>
