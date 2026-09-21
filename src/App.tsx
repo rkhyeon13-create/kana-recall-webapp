@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { COURSE_LABEL, KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
 import { SettingDropdown } from './SettingDropdown'
+import { KanaLearn } from './KanaLearn'
+import { BackButton } from './BackButton'
 import { WordModule } from './WordModule'
 import { createFsrsRecord, getFsrsCardKey, localDateKey, promoteCharactersToFsrs } from './lib/fsrs'
 import {
@@ -103,8 +105,11 @@ export default function App() {
   const [cards, setCards] = useState<FsrsCardMap>(initial.cards)
   const [progress, setProgress] = useState<ProgressMap>(initial.progress)
   const [session, setSession] = useState<Session>(initial.session)
-  const [view, setView] = useState<'home' | 'quiz'>('home')
-  const [module, setModule] = useState<'picker' | 'kana' | 'words'>('picker')
+  const [view, setView] = useState<'home' | 'quiz' | 'learn'>('home')
+  const [learnSettings, setLearnSettings] = useState<Settings>(initial.session.settings)
+  const [learnCourse, setLearnCourse] = useState<KanaCourse>('basic')
+  const [learnRange, setLearnRange] = useState<KanaRange>('mixed')
+  const [module, setModule] = useState<'picker' | 'kana-menu' | 'kana' | 'dictation' | 'words'>('picker')
   const [openSetting, setOpenSetting] = useState<'course' | 'range' | 'promptMode' | null>(null)
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
@@ -249,6 +254,22 @@ export default function App() {
     setView('quiz')
   }
 
+  const startLearning = () => {
+    setLearnSettings({ ...session.settings, course: learnCourse, range: learnRange, promptMode: 'sound' })
+    setView('learn')
+  }
+
+  const startQuizFromLearning = (settings: Settings) => {
+    setSession({ ...createScheduledSession(settings, cards, initial.firstCheckOrder), startedAt: Date.now() })
+    setModule('kana')
+    setView('quiz')
+  }
+
+  const returnToKanaMenu = () => {
+    setView('home')
+    setModule('kana-menu')
+  }
+
   if (module === 'picker') {
     return (
       <main className="app-shell">
@@ -259,10 +280,13 @@ export default function App() {
             <p>바로 시작할 학습 모듈을 선택해보세요.</p>
           </header>
           <div className="module-options">
-            <button type="button" className="module-option" onClick={() => setModule('kana')}>
-              <span className="module-option-count">3개 과정</span>
+            <button type="button" className="module-option" onClick={() => {
+              setView('home')
+              setModule('kana-menu')
+            }}>
+              <span className="module-option-count">히라가나·가타카나</span>
               <strong>가나</strong>
-              <span>기본 92자 · 탁음·반탁음 · 요음</span>
+              <span>객관식과 주관식으로 가나 학습</span>
             </button>
             <button type="button" className="module-option" onClick={() => setModule('words')}>
               <span className="module-option-count">130개</span>
@@ -276,7 +300,92 @@ export default function App() {
     )
   }
 
+  if (module === 'kana-menu') {
+    return (
+      <main className="app-shell">
+        <section className="card module-picker-card" aria-labelledby="kana-module-title">
+          <header className="module-picker-header">
+            <BackButton onClick={() => setModule('picker')} label="홈으로 돌아가기" />
+            <h1 id="kana-module-title">가나 학습</h1>
+            <p>학습할 방식을 선택해보세요.</p>
+          </header>
+          <div className="module-options">
+            <button type="button" className="module-option" onClick={() => {
+              setView('home')
+              setModule('kana')
+            }}>
+              <span className="module-option-count">1단계</span>
+              <strong>객관식</strong>
+              <span>소리를 떠올리고 보기에서 정답 선택</span>
+            </button>
+            <button type="button" className="module-option" onClick={() => {
+              setView('home')
+              setModule('dictation')
+            }}>
+              <span className="module-option-count">2단계</span>
+              <strong>주관식</strong>
+              <span>소리를 듣고 화면에 직접 쓰기</span>
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (module === 'words') return <WordModule onBack={() => setModule('picker')} />
+
+  if (module === 'dictation' && view !== 'learn') {
+    return (
+      <main className="app-shell">
+        <section className="card home-card dictation-home" aria-labelledby="dictation-home-title">
+          <header className="home-header">
+            <BackButton onClick={returnToKanaMenu} />
+            <h1 id="dictation-home-title">가나 받아쓰기</h1>
+            <p>학습할 과정과 문자 범위를 선택해보세요.</p>
+          </header>
+          <div className="dictation-settings">
+            <SettingDropdown
+              id="dictation-course-setting"
+              label="학습 과정"
+              value={learnCourse}
+              options={COURSE_OPTIONS}
+              isOpen={openSetting === 'course'}
+              onToggle={() => setOpenSetting((current) => current === 'course' ? null : 'course')}
+              onChange={(value) => {
+                setOpenSetting(null)
+                setLearnCourse(value)
+              }}
+            />
+            <SettingDropdown
+              id="dictation-range-setting"
+              label="문자 범위"
+              value={learnRange}
+              options={RANGE_OPTIONS}
+              isOpen={openSetting === 'range'}
+              onToggle={() => setOpenSetting((current) => current === 'range' ? null : 'range')}
+              onChange={(value) => {
+                setOpenSetting(null)
+                setLearnRange(value)
+              }}
+            />
+          </div>
+          <button className="primary-action" type="button" onClick={startLearning}>받아쓰기 시작</button>
+          <p className="local-note">받아쓰기 결과는 복습 일정과 학습 통계에 반영되지 않습니다.</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (view === 'learn') {
+    return (
+      <KanaLearn
+        settings={learnSettings}
+        onBack={() => setView('home')}
+        onMenu={returnToKanaMenu}
+        onStartQuiz={startQuizFromLearning}
+      />
+    )
+  }
 
   if (view === 'home') {
     const course = session.settings.course ?? 'basic'
@@ -290,7 +399,7 @@ export default function App() {
       <main className="app-shell">
         <section className="card home-card" aria-labelledby="home-title">
           <header className="home-header">
-            <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
+            <BackButton onClick={returnToKanaMenu} />
             <h1 id="home-title">오늘의 {COURSE_LABEL[course]} 학습</h1>
             <p>학습 기록에 따라 복습 시점이 자동으로 조정돼요.</p>
           </header>
@@ -337,7 +446,7 @@ export default function App() {
     return (
       <main className="app-shell">
         <section className="card summary-card" aria-labelledby="summary-title">
-          <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
+          <BackButton onClick={returnToKanaMenu} />
           <p className="eyebrow">학습 완료</p>
           <h1 id="summary-title">{title}</h1>
           {hasDueRemaining && <p className="schedule-note">오늘 복습 {completion.dueRemaining}자 남음</p>}
@@ -410,7 +519,7 @@ export default function App() {
       <section className="card quiz-card" aria-labelledby="app-title">
         <header className="topbar">
           <div>
-            <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
+            <BackButton onClick={returnToKanaMenu} />
             <h1 id="app-title" className="sr-only">일본어 가나 떠올리기 학습</h1>
           </div>
           <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
