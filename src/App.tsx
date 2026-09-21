@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
+import { COURSE_LABEL, KANA_BY_CHARACTER, KIND_LABEL } from './data/kana'
 import { SettingDropdown } from './SettingDropdown'
 import { WordModule } from './WordModule'
 import { createFsrsRecord, getFsrsCardKey, localDateKey, promoteCharactersToFsrs } from './lib/fsrs'
@@ -27,7 +27,13 @@ import {
   saveSession,
   updateProgress,
 } from './lib/storage'
-import type { FirstCheckOrder, FsrsCardMap, KanaRange, ProgressMap, PromptMode, Session, Settings } from './types'
+import type { FirstCheckOrder, FsrsCardMap, KanaCourse, KanaRange, ProgressMap, PromptMode, Session, Settings } from './types'
+
+const COURSE_OPTIONS: { value: KanaCourse; label: string }[] = [
+  { value: 'basic', label: '기본 가나 92자' },
+  { value: 'voiced', label: '탁음·반탁음' },
+  { value: 'yoon', label: '요음' },
+]
 
 const RANGE_OPTIONS: { value: KanaRange; label: string }[] = [
   { value: 'katakana', label: '가타카나' },
@@ -53,7 +59,7 @@ function newSession(
   firstCheckOrder: FirstCheckOrder,
   now = Date.now(),
 ): Session {
-  return settings.promptMode === 'sound'
+  return settings.promptMode === 'sound' || (settings.course ?? 'basic') !== 'basic'
     ? createScheduledSession(settings, cards, firstCheckOrder, now)
     : createTriggerPracticeSession(settings, now)
 }
@@ -99,18 +105,18 @@ export default function App() {
   const [session, setSession] = useState<Session>(initial.session)
   const [view, setView] = useState<'home' | 'quiz'>('home')
   const [module, setModule] = useState<'picker' | 'kana' | 'words'>('picker')
-  const [openSetting, setOpenSetting] = useState<'range' | 'promptMode' | null>(null)
+  const [openSetting, setOpenSetting] = useState<'course' | 'range' | 'promptMode' | null>(null)
   const [choicesVisible, setChoicesVisible] = useState(() => session.answer !== null || Date.now() >= session.optionsVisibleAt)
 
   const currentItem = session.items[session.index]
   const currentKana = currentItem ? KANA_BY_CHARACTER.get(currentItem.character) : undefined
   const completion = useMemo(
-    () => getCompletionStatus(cards, session.settings.range),
-    [cards, session.settings.range],
+    () => getCompletionStatus(cards, session.settings.range, session.settings.course ?? 'basic'),
+    [cards, session.settings.range, session.settings.course],
   )
   const homeStats = useMemo(
-    () => getHomeStats(cards, progress, 'mixed'),
-    [cards, progress],
+    () => getHomeStats(cards, progress, 'mixed', session.settings.course ?? 'basic'),
+    [cards, progress, session.settings.course],
   )
   const homeAction = getHomeAction(session, homeStats)
 
@@ -198,6 +204,17 @@ export default function App() {
     restart({ ...session.settings, [key]: value })
   }
 
+  const changeCourse = (course: KanaCourse) => {
+    setOpenSetting(null)
+    const settings: Settings = {
+      ...session.settings,
+      course,
+      promptMode: course === 'basic' ? session.settings.promptMode : 'sound',
+    }
+    const nextSession = newSession(settings, cards, initial.firstCheckOrder)
+    setSession({ ...nextSession, startedAt: view === 'quiz' ? Date.now() : null })
+  }
+
   const startFreePractice = () => {
     setSession({ ...createFreePracticeSession(session.settings), startedAt: Date.now() })
     setView('quiz')
@@ -243,9 +260,9 @@ export default function App() {
           </header>
           <div className="module-options">
             <button type="button" className="module-option" onClick={() => setModule('kana')}>
-              <span className="module-option-count">92자</span>
+              <span className="module-option-count">3개 과정</span>
               <strong>가나</strong>
-              <span>히라가나와 가타카나</span>
+              <span>기본 92자 · 탁음·반탁음 · 요음</span>
             </button>
             <button type="button" className="module-option" onClick={() => setModule('words')}>
               <span className="module-option-count">130개</span>
@@ -262,6 +279,7 @@ export default function App() {
   if (module === 'words') return <WordModule onBack={() => setModule('picker')} />
 
   if (view === 'home') {
+    const course = session.settings.course ?? 'basic'
     const homeButtonLabel = {
       start: '학습 시작',
       continue: '계속 학습',
@@ -273,9 +291,20 @@ export default function App() {
         <section className="card home-card" aria-labelledby="home-title">
           <header className="home-header">
             <button className="brand-button" type="button" onClick={() => setModule('picker')}>도전! 일본어</button>
-            <h1 id="home-title">오늘의 가나 학습</h1>
+            <h1 id="home-title">오늘의 {COURSE_LABEL[course]} 학습</h1>
             <p>학습 기록에 따라 복습 시점이 자동으로 조정돼요.</p>
           </header>
+          <div className="home-course-setting">
+            <SettingDropdown
+              id="home-course-setting"
+              label="학습 과정"
+              value={course}
+              options={COURSE_OPTIONS}
+              isOpen={openSetting === 'course'}
+              onToggle={() => setOpenSetting((current) => current === 'course' ? null : 'course')}
+              onChange={changeCourse}
+            />
+          </div>
           <div className="home-stats" aria-label="학습 통계">
             <div><strong>{homeStats.due}</strong><span>남은 복습</span></div>
             <div><strong>{homeStats.firstCheckRemaining}</strong><span>학습 시작 전</span></div>
@@ -371,8 +400,10 @@ export default function App() {
 
   if (!currentItem || !currentKana) return null
 
-  const prompt = session.settings.promptMode === 'trigger' ? currentKana.trigger : currentKana.sound
+  const course = session.settings.course ?? 'basic'
+  const prompt = session.settings.promptMode === 'trigger' ? (currentKana.trigger ?? currentKana.sound) : currentKana.sound
   const progressText = `${session.index + 1} / ${session.items.length}`
+  const modeOptions = course === 'basic' ? MODE_OPTIONS : MODE_OPTIONS.slice(0, 1)
 
   return (
     <main className="app-shell">
@@ -385,7 +416,16 @@ export default function App() {
           <span className="progress" aria-label={`진행 ${progressText}`}>{progressText}</span>
         </header>
 
-        <div className="settings" aria-label="문제 설정">
+        <div className="settings kana-settings" aria-label="문제 설정">
+          <SettingDropdown
+            id="course-setting"
+            label="학습 과정"
+            value={course}
+            options={COURSE_OPTIONS}
+            isOpen={openSetting === 'course'}
+            onToggle={() => setOpenSetting((current) => current === 'course' ? null : 'course')}
+            onChange={changeCourse}
+          />
           <SettingDropdown
             id="range-setting"
             label="문자 범위"
@@ -399,7 +439,7 @@ export default function App() {
             id="prompt-setting"
             label="출제 방식"
             value={session.settings.promptMode}
-            options={MODE_OPTIONS}
+            options={modeOptions}
             isOpen={openSetting === 'promptMode'}
             onToggle={() => setOpenSetting((current) => current === 'promptMode' ? null : 'promptMode')}
             onChange={(value) => changeSetting('promptMode', value)}
@@ -407,7 +447,7 @@ export default function App() {
         </div>
 
         <div className="question" key={`${session.id}-${session.index}`}>
-          <p className="question-kind">{KIND_LABEL[currentKana.kind]} ·</p>
+          <p className="question-kind">{KIND_LABEL[currentKana.kind]} · {COURSE_LABEL[currentKana.course]}</p>
           <p className="question-meta">{prompt}</p>
           <p className="recall-guide">정답 글자를 머릿속으로 떠올려보세요</p>
         </div>
@@ -448,7 +488,12 @@ export default function App() {
                   <span className="status-badge" aria-hidden="true">O</span>
                   <span>맞았어요</span>
                 </h2>
-                {session.settings.promptMode === 'trigger' ? (
+                {currentKana.course !== 'basic' ? (
+                  <>
+                    <p className="feedback-trigger">{currentKana.composition}</p>
+                    <p className="feedback-description">{currentKana.description}</p>
+                  </>
+                ) : session.settings.promptMode === 'trigger' ? (
                   <>
                     <p className="feedback-trigger">{currentKana.trigger}</p>
                     <p>{currentKana.description}</p>
@@ -470,9 +515,19 @@ export default function App() {
                     <span className="answer-character" lang="ja">{currentKana.character}</span>
                   </span>
                 </h2>
-                <p className="repair-guide">연상 Trigger로 문자와 소리를 다시 연결해보세요.</p>
-                <p className="feedback-trigger">{currentKana.trigger}</p>
-                <p>{currentKana.description}</p>
+                {currentKana.course === 'basic' ? (
+                  <>
+                    <p className="repair-guide">연상 Trigger로 문자와 소리를 다시 연결해보세요.</p>
+                    <p className="feedback-trigger">{currentKana.trigger}</p>
+                    <p>{currentKana.description}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="repair-guide">조합 원리로 글자와 소리를 다시 연결해보세요.</p>
+                    <p className="feedback-trigger">{currentKana.composition}</p>
+                    <p>{currentKana.description}</p>
+                  </>
+                )}
               </>
             )}
             <button className="primary-action" type="button" onClick={next} autoFocus>

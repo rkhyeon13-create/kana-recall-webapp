@@ -1,4 +1,5 @@
 import type { Kana, KanaKind } from '../types'
+import { EXTENDED_KANA } from './extendedKana'
 
 type KanaRow = readonly [character: string, sound: string, trigger: string, description: string]
 
@@ -101,12 +102,14 @@ const katakanaRows: readonly KanaRow[] = [
 ]
 
 const withKind = (rows: readonly KanaRow[], kind: KanaKind): Kana[] =>
-  rows.map(([character, sound, trigger, description]) => ({ character, sound, trigger, description, kind }))
+  rows.map(([character, sound, trigger, description]) => ({ character, sound, trigger, description, kind, course: 'basic' }))
 
-export const KANA: readonly Kana[] = [
+export const BASIC_KANA: readonly Kana[] = [
   ...withKind(hiraganaRows, 'hiragana'),
   ...withKind(katakanaRows, 'katakana'),
 ]
+
+export const KANA: readonly Kana[] = [...BASIC_KANA, ...EXTENDED_KANA]
 
 export const KANA_BY_CHARACTER = new Map(KANA.map((kana) => [kana.character, kana]))
 
@@ -114,3 +117,9 @@ export const KIND_LABEL: Record<KanaKind, string> = {
   hiragana: '히라가나',
   katakana: '가타카나',
 }
+
+export const COURSE_LABEL = {
+  basic: '기본 가나',
+  voiced: '탁음·반탁음',
+  yoon: '요음',
+} as const

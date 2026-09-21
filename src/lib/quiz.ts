@@ -6,6 +6,7 @@ import type {
   FsrsCardMap,
   HomeStats,
   Kana,
+  KanaCourse,
   KanaRange,
   ScheduledSessionItem,
   Session,
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   range: 'mixed',
   promptMode: 'sound',
   sessionSize: MAX_SESSION_SIZE,
+  course: 'basic',
 }
 
 export const CONFUSABLES: Readonly<Record<string, readonly string[]>> = {
@@ -51,18 +53,22 @@ export function shuffle<T>(items: readonly T[], random: () => number = Math.rand
   return result
 }
 
-export function getKanaForRange(range: KanaRange): Kana[] {
-  return KANA.filter((kana) => range === 'mixed' || kana.kind === range)
+export function getKanaForRange(range: KanaRange, course: KanaCourse = 'basic'): Kana[] {
+  return KANA.filter((kana) => kana.course === course && (range === 'mixed' || kana.kind === range))
 }
 
 export function createOptions(character: string, random: () => number = Math.random): string[] {
   const answer = KANA_BY_CHARACTER.get(character)
   if (!answer) throw new Error(`Unknown kana: ${character}`)
 
-  const sameKind = KANA.filter((kana) => kana.kind === answer.kind && kana.character !== character)
+  const sameKind = KANA.filter((kana) => (
+    kana.kind === answer.kind && kana.course === answer.course && kana.character !== character
+  ))
   const preferred = (CONFUSABLES[character] ?? [])
     .map((candidate) => KANA_BY_CHARACTER.get(candidate))
-    .filter((candidate): candidate is Kana => Boolean(candidate && candidate.kind === answer.kind))
+    .filter((candidate): candidate is Kana => Boolean(
+      candidate && candidate.kind === answer.kind && candidate.course === answer.course,
+    ))
   const preferredCharacters = new Set(preferred.map((kana) => kana.character))
   const fallback = sameKind.filter((kana) => !preferredCharacters.has(kana.character))
   const distractors = [...shuffle(preferred, random), ...shuffle(fallback, random)]
@@ -131,7 +137,7 @@ export function createScheduledSession(
   random: () => number = Math.random,
 ): Session {
   const scheduledSettings: Settings = { ...settings, promptMode: 'sound' }
-  const eligible = new Set(getKanaForRange(settings.range).map((kana) => kana.character))
+  const eligible = new Set(getKanaForRange(settings.range, settings.course ?? 'basic').map((kana) => kana.character))
   const dueCharacters = Object.values(cards)
     .filter((record) => eligible.has(record.character) && record.promptMode === 'sound' && record.card.due <= now)
     .sort((left, right) => left.card.due - right.card.due)
@@ -158,7 +164,7 @@ export function createTriggerPracticeSession(
   random: () => number = Math.random,
 ): Session {
   const triggerSettings: Settings = { ...settings, promptMode: 'trigger' }
-  const characters = shuffle(getKanaForRange(settings.range), random)
+  const characters = shuffle(getKanaForRange(settings.range, settings.course ?? 'basic'), random)
     .slice(0, sessionLimit(settings))
     .map((kana) => kana.character)
   return buildSession(triggerSettings, characters, characters.map(() => 'practice'), 'trigger-practice', now, random)
@@ -170,7 +176,7 @@ export function createFreePracticeSession(
   random: () => number = Math.random,
 ): Session {
   const practiceSettings: Settings = { ...settings, promptMode: 'sound' }
-  const characters = shuffle(getKanaForRange(settings.range), random)
+  const characters = shuffle(getKanaForRange(settings.range, settings.course ?? 'basic'), random)
     .slice(0, sessionLimit(settings))
     .map((kana) => kana.character)
   return buildSession(practiceSettings, characters, characters.map(() => 'practice'), 'free-practice', now, random)
@@ -228,9 +234,10 @@ export function advanceSession(
 export function getCompletionStatus(
   cards: FsrsCardMap,
   range: KanaRange,
+  course: KanaCourse = 'basic',
   now: number = Date.now(),
 ): CompletionStatus {
-  const eligible = new Set(getKanaForRange(range).map((kana) => kana.character))
+  const eligible = new Set(getKanaForRange(range, course).map((kana) => kana.character))
   const records = Object.values(cards).filter((record) => eligible.has(record.character) && record.promptMode === 'sound')
   const dueRemaining = records.filter((record) => record.card.due <= now).length
   const future = records.filter((record) => record.card.due > now).sort((left, right) => left.card.due - right.card.due)
@@ -288,9 +295,10 @@ export function getHomeStats(
   cards: FsrsCardMap,
   progress: ProgressMap,
   range: KanaRange,
+  course: KanaCourse = 'basic',
   now: number = Date.now(),
 ): HomeStats {
-  const eligibleCharacters = getKanaForRange(range).map((kana) => kana.character)
+  const eligibleCharacters = getKanaForRange(range, course).map((kana) => kana.character)
   const eligible = new Set(eligibleCharacters)
   const records = Object.values(cards).filter((record) => eligible.has(record.character) && record.promptMode === 'sound')
   const progressRecords = Object.entries(progress).filter(([character]) => eligible.has(character)).map(([, value]) => value)

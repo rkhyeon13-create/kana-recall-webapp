@@ -1,5 +1,6 @@
 export type KanaKind = 'hiragana' | 'katakana'
 export type KanaRange = KanaKind | 'mixed'
+export type KanaCourse = 'basic' | 'voiced' | 'yoon'
 export type PromptMode = 'trigger' | 'sound'
 export type SessionMode = 'scheduled' | 'trigger-practice' | 'free-practice' | 'legacy-practice'
 export type SessionItemSource = 'due' | 'first-check' | 'practice' | 'retry'
@@ -7,15 +8,18 @@ export type SessionItemSource = 'due' | 'first-check' | 'practice' | 'retry'
 export interface Kana {
   character: string
   sound: string
-  trigger: string
+  trigger?: string
   description: string
   kind: KanaKind
+  course: KanaCourse
+  composition?: string
 }
 
 export interface Settings {
   range: KanaRange
   promptMode: PromptMode
   sessionSize: number
+  course?: KanaCourse
 }
 
 export interface AnswerResult {

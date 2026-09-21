@@ -1,4 +1,4 @@
-import { KANA, KANA_BY_CHARACTER } from '../data/kana'
+import { BASIC_KANA, KANA, KANA_BY_CHARACTER } from '../data/kana'
 import { getFsrsCardKey, isSerializedFsrsCard } from './fsrs'
 import { shuffle } from './quiz'
 import type {
@@ -24,6 +24,7 @@ function isSettings(value: unknown): value is Session['settings'] {
   return (
     ['hiragana', 'katakana', 'mixed'].includes(settings.range ?? '') &&
     ['trigger', 'sound'].includes(settings.promptMode ?? '') &&
+    (settings.course === undefined || ['basic', 'voiced', 'yoon'].includes(settings.course)) &&
     typeof settings.sessionSize === 'number' &&
     Number.isFinite(settings.sessionSize) &&
     settings.sessionSize > 0
@@ -87,12 +88,16 @@ function isValidSession(value: unknown): value is Session {
   if (session.index < 0 || session.index >= items.length || !currentKana) return false
   if (session.options.length !== 4 || new Set(session.options).size !== 4) return false
   if (!session.options.includes(currentItem!.character)) return false
-  return session.options.every((character) => KANA_BY_CHARACTER.get(character)?.kind === currentKana.kind)
+  return session.options.every((character) => {
+    const option = KANA_BY_CHARACTER.get(character)
+    return option?.kind === currentKana.kind && option.course === currentKana.course
+  })
 }
 
 function normalizeSession(session: Session): Session {
   return {
     ...session,
+    settings: { ...session.settings, course: session.settings.course ?? 'basic' },
     startedAt: session.startedAt === undefined ? (
       session.index > 0 || session.answer !== null
         ? Math.max(0, session.optionsVisibleAt - 2_000)
@@ -144,7 +149,7 @@ export function migrateSessionV1(session: LegacySessionV1): Session {
     startedAt: session.index > 0 || session.answer !== null
       ? Math.max(0, session.optionsVisibleAt - 2_000)
       : null,
-    settings: session.settings,
+    settings: { ...session.settings, course: session.settings.course ?? 'basic' },
     mode: 'legacy-practice',
     items,
     initialItemCount: initialCount,
@@ -234,12 +239,36 @@ function isCompleteKanaOrder(value: unknown): value is FirstCheckOrder {
   )
 }
 
+function isMigratableBasicOrder(value: unknown): value is FirstCheckOrder {
+  if (!value || typeof value !== 'object') return false
+  const order = value as Partial<FirstCheckOrder>
+  return (
+    order.version === 1 &&
+    Array.isArray(order.characters) &&
+    order.characters.length === 92 &&
+    new Set(order.characters).size === 92 &&
+    order.characters.every((character) => typeof character === 'string' && KANA_BY_CHARACTER.has(character)) &&
+    BASIC_KANA.every((kana) => order.characters!.includes(kana.character))
+  )
+}
+
 export function loadOrCreateFirstCheckOrder(random: () => number = Math.random): FirstCheckOrder {
   try {
     const stored = localStorage.getItem(FIRST_CHECK_ORDER_KEY)
     if (stored) {
       const parsed: unknown = JSON.parse(stored)
       if (isCompleteKanaOrder(parsed)) return parsed
+      if (isMigratableBasicOrder(parsed)) {
+        const existing = new Set(parsed.characters)
+        const extended = shuffle(KANA.map((kana) => kana.character).filter((character) => !existing.has(character)), random)
+        const migrated: FirstCheckOrder = { version: 1, characters: [...parsed.characters, ...extended] }
+        try {
+          localStorage.setItem(FIRST_CHECK_ORDER_KEY, JSON.stringify(migrated))
+        } catch {
+          // The migrated in-memory order is still safe to use.
+        }
+        return migrated
+      }
     }
   } catch {
     // Fall through to a fresh order without touching other stored data.

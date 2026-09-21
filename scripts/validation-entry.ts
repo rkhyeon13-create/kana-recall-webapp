@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { Rating, State } from 'ts-fsrs'
 import type { Card } from 'ts-fsrs'
-import { KANA, KANA_BY_CHARACTER } from '../src/data/kana'
+import { BASIC_KANA, KANA, KANA_BY_CHARACTER } from '../src/data/kana'
 import { WORDS, WORD_BY_ID, WORD_CATEGORIES } from '../src/data/words'
 import {
   createFsrsRecord,
@@ -114,11 +114,20 @@ const triggerSettings: Settings = { ...DEFAULT_SETTINGS, promptMode: 'trigger' }
 const now = new Date(2026, 8, 14, 12, 0, 0).getTime()
 
 assert.equal(FSRS_PACKAGE_VERSION, '5.4.2')
-assert.equal(KANA.length, 92, '전체 가나는 92자여야 합니다.')
-assert.equal(KANA.filter((kana) => kana.kind === 'hiragana').length, 46)
-assert.equal(KANA.filter((kana) => kana.kind === 'katakana').length, 46)
-assert.equal(new Set(KANA.map((kana) => kana.character)).size, 92)
-for (const kana of KANA) assert.ok(kana.character && kana.sound && kana.trigger && kana.description && kana.kind)
+assert.equal(BASIC_KANA.length, 92, '기본 가나는 92자여야 합니다.')
+assert.equal(KANA.length, 208, '기본·탁음·반탁음·요음을 합쳐 208개여야 합니다.')
+assert.equal(KANA.filter((kana) => kana.course === 'basic' && kana.kind === 'hiragana').length, 46)
+assert.equal(KANA.filter((kana) => kana.course === 'basic' && kana.kind === 'katakana').length, 46)
+assert.equal(KANA.filter((kana) => kana.course === 'voiced' && kana.kind === 'hiragana').length, 25)
+assert.equal(KANA.filter((kana) => kana.course === 'voiced' && kana.kind === 'katakana').length, 25)
+assert.equal(KANA.filter((kana) => kana.course === 'yoon' && kana.kind === 'hiragana').length, 33)
+assert.equal(KANA.filter((kana) => kana.course === 'yoon' && kana.kind === 'katakana').length, 33)
+assert.equal(new Set(KANA.map((kana) => kana.character)).size, 208)
+for (const kana of KANA) {
+  assert.ok(kana.character && kana.sound && kana.description && kana.kind && kana.course)
+  if (kana.course === 'basic') assert.ok(kana.trigger)
+  else assert.ok(kana.composition && !kana.trigger)
+}
 
 for (const kana of KANA) {
   const observedPositions = new Set<number>()
@@ -128,6 +137,7 @@ for (const kana of KANA) {
     assert.equal(new Set(options).size, 4)
     assert.equal(options.filter((option) => option === kana.character).length, 1)
     assert.ok(options.every((option) => KANA_BY_CHARACTER.get(option)?.kind === kana.kind))
+    assert.ok(options.every((option) => KANA_BY_CHARACTER.get(option)?.course === kana.course))
     observedPositions.add(options.indexOf(kana.character))
   }
   assert.ok(observedPositions.size > 1, `${kana.character} 정답 위치가 섞이지 않았습니다.`)
@@ -157,6 +167,28 @@ const mixedSession = createScheduledSession(soundSettings, dueCards, dueOrder, n
 assert.deepEqual(mixedSession.items.slice(0, 3).map((item) => item.character), ['ア', 'あ', 'い'])
 const cappedSession = createScheduledSession({ ...soundSettings, sessionSize: 50 }, {}, dueOrder, now, () => 0.5)
 assert.equal(cappedSession.items.length, MAX_SESSION_SIZE)
+
+const voicedSession = createScheduledSession(
+  { ...soundSettings, course: 'voiced' },
+  {},
+  dueOrder,
+  now,
+  () => 0.5,
+)
+assert.equal(voicedSession.items.length, MAX_SESSION_SIZE)
+assert.ok(voicedSession.items.every((item) => KANA_BY_CHARACTER.get(item.character)?.course === 'voiced'))
+assert.ok(voicedSession.options.every((character) => KANA_BY_CHARACTER.get(character)?.course === 'voiced'))
+const yoonSession = createScheduledSession(
+  { ...soundSettings, course: 'yoon', range: 'katakana' },
+  {},
+  dueOrder,
+  now,
+  () => 0.5,
+)
+assert.ok(yoonSession.items.every((item) => {
+  const kana = KANA_BY_CHARACTER.get(item.character)
+  return kana?.course === 'yoon' && kana.kind === 'katakana'
+}))
 
 const firstOrder = orderWith(KANA.slice(0, 20).map((kana) => kana.character))
 const firstSession = createScheduledSession(soundSettings, {}, firstOrder, now, () => 0.5)
@@ -232,14 +264,14 @@ assert.ok(Object.values(promotedCards).every((item) => item.card.reps === 1 && i
 assert.equal(canPromoteFreePracticeErrors({ ...completedFreeSession, freePracticePromotedAt: now }), false)
 assert.equal(canPromoteFreePracticeErrors({ ...completedFreeSession, mode: 'scheduled' }), false)
 
-const dueCompletion = getCompletionStatus({ [getFsrsCardKey('あ')]: record('あ', now - 1) }, 'mixed', now)
+const dueCompletion = getCompletionStatus({ [getFsrsCardKey('あ')]: record('あ', now - 1) }, 'mixed', 'basic', now)
 assert.equal(dueCompletion.dueRemaining, 1)
 assert.equal(dueCompletion.canFreePractice, false)
 assert.equal(canOfferFreePractice({ ...scheduled, completed: true, completedAt: now }, dueCompletion), false)
 const futureCompletion = getCompletionStatus({
   [getFsrsCardKey('あ')]: record('あ', now + 3_600_000),
   [getFsrsCardKey('い')]: record('い', now + 3_700_000),
-}, 'mixed', now)
+}, 'mixed', 'basic', now)
 assert.equal(futureCompletion.dueRemaining, 0)
 assert.equal(futureCompletion.nextDueCount, 2)
 assert.equal(canOfferFreePractice({ ...scheduled, completed: true, completedAt: now }, futureCompletion), true)
@@ -255,6 +287,7 @@ const homeStats = getHomeStats(
     い: { shown: 1, correct: 1, wrong: 0, lastStudiedAt: 'saved' },
   },
   'hiragana',
+  'basic',
   now,
 )
 assert.equal(homeStats.due, 1)
@@ -320,9 +353,16 @@ assert.ok(memory.has(SESSION_V2_KEY))
 
 memory.clear()
 const stableOrder = loadOrCreateFirstCheckOrder(() => 0.5)
-assert.equal(stableOrder.characters.length, 92)
+assert.equal(stableOrder.characters.length, KANA.length)
 assert.deepEqual(loadOrCreateFirstCheckOrder(() => 0.1), stableOrder)
 assert.ok(memory.has(FIRST_CHECK_ORDER_KEY))
+
+memory.clear()
+const legacyBasicOrder: FirstCheckOrder = { version: 1, characters: BASIC_KANA.map((kana) => kana.character) }
+memory.set(FIRST_CHECK_ORDER_KEY, JSON.stringify(legacyBasicOrder))
+const expandedOrder = loadOrCreateFirstCheckOrder(() => 0.5)
+assert.equal(expandedOrder.characters.length, KANA.length)
+assert.deepEqual(expandedOrder.characters.slice(0, BASIC_KANA.length), legacyBasicOrder.characters)
 
 const beforeMidnight = new Date(2026, 8, 14, 23, 59).getTime()
 const afterMidnight = new Date(2026, 8, 15, 0, 1).getTime()
@@ -334,7 +374,7 @@ memory.set(FSRS_KEY, JSON.stringify({ broken: { card: 'bad' } }))
 memory.set(FIRST_CHECK_ORDER_KEY, JSON.stringify({ version: 1, characters: ['あ'] }))
 assert.equal(loadSession(), null)
 assert.deepEqual(loadFsrsCards(), {})
-assert.equal(loadOrCreateFirstCheckOrder(() => 0.5).characters.length, 92)
+assert.equal(loadOrCreateFirstCheckOrder(() => 0.5).characters.length, KANA.length)
 
 memory.clear()
 updateProgress('あ', true)
@@ -433,9 +473,10 @@ assert.equal(loadWordSession(), null)
 assert.deepEqual(loadWordProgress(), {})
 
 console.log([
-  '검증 통과: 92자 데이터와 선택지 규칙',
+  '검증 통과: 기본 92자와 확장 가나 116개 데이터/선택지 규칙',
   'due 우선/오래 지난 순서/범위/최대 10문제',
   '첫 확인 순환 순서',
+  '기존 92자 첫 확인 순서 보존 및 확장',
   'Sound 전용 FSRS와 Again/Good',
   '최초 응답 1회/오답 재도전 1회',
   'Trigger·자유 연습·재도전 제외 정책',
