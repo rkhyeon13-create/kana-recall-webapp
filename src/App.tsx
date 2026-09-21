@@ -30,7 +30,7 @@ import {
 import type { FirstCheckOrder, FsrsCardMap, KanaCourse, KanaRange, ProgressMap, PromptMode, Session, Settings } from './types'
 
 const COURSE_OPTIONS: { value: KanaCourse; label: string }[] = [
-  { value: 'basic', label: '기본 가나 92자' },
+  { value: 'basic', label: '기본' },
   { value: 'voiced', label: '탁음·반탁음' },
   { value: 'yoon', label: '요음' },
 ]
